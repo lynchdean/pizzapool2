@@ -1,7 +1,8 @@
 # orders/models.py
-from django.db import models
+from django.db import models, transaction
 from events.models import Event
 from vendors.models import MenuItem
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class Order(models.Model):
@@ -12,11 +13,27 @@ class Order(models.Model):
     def __str__(self):
         return f"{self.menu_item} for {self.event}"
 
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if is_new:
+                self._generate_portions()
+
+    def _generate_portions(self):
+        from .models import Portion  # avoid circular import issues if split across files
+        portions = [
+            Portion(order=self, portion_number=n)
+            for n in range(1, self.menu_item.portions_per_unit + 1)
+        ]
+        Portion.objects.bulk_create(portions)
+
 
 class Portion(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="portions")
     portion_number = models.PositiveIntegerField()
     claimant_name = models.CharField(max_length=255, blank=True, null=True)
+    claimant_phone = PhoneNumberField(blank=True, null=True)
     claimed_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:

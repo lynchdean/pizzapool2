@@ -6,7 +6,11 @@ from .models import Order, Portion
 class PortionInline(admin.TabularInline):
     model = Portion
     extra = 0
+    can_delete = False
     readonly_fields = ("portion_number", "claimant_name", "claimed_at")
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Order)

@@ -1,0 +1,25 @@
+<form method="post" action="{% url 'orders:claim_portions' event.id %}">
+  {% csrf_token %}
+  <p>
+    <label>Your name: <input type="text" name="claimant_name" required></label>
+  </p>
+
+{% for order in orders %}
+  <h2>{{ order.menu_item.name }} ({{ order.available_count }} available)</h2>
+  {% if order.available_count > 0 %}
+    <label>
+      Quantity:
+      <select name="quantity_{{ order.id }}">
+        <option value="0">0</option>
+        {% for n in order.available_range %}
+          <option value="{{ n }}">{{ n }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  {% else %}
+    <p>Sold out</p>
+  {% endif %}
+{% endfor %}
+
+  <button type="submit">Claim</button>
+</form>
