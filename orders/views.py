@@ -2,7 +2,7 @@
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from events.models import Event
-from .services import claim_portions_by_quantity, NotEnoughPortionsError
+from .services import claim_portions_by_quantity, NotEnoughPortionsError, EventNotOpenError
 
 
 def claim_portions_view(request, event_id):
@@ -30,9 +30,11 @@ def claim_portions_view(request, event_id):
         return redirect('events:event_detail', event_id=event_id)
 
     try:
-        claimed = claim_portions_by_quantity(requests, claimant_name)
+        claimed = claim_portions_by_quantity(event, requests, claimant_name)
         messages.success(request, f"Claimed {len(claimed)} portion(s)!")
-    except NotEnoughPortionsError as e:
-        messages.error(request, f"Sorry, not enough available in one of your selections. Nothing was claimed — please try again.")
+    except EventNotOpenError:
+        messages.error(request, "This event is no longer open for claims.")
+    except NotEnoughPortionsError:
+        messages.error(request, "Sorry, not enough available in one of your selections. Nothing was claimed — please try again.")
 
     return redirect('events:event_detail', event_id=event_id)

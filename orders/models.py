@@ -1,4 +1,5 @@
 # orders/models.py
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from events.models import Event
 from vendors.models import MenuItem
@@ -12,6 +13,11 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.menu_item} for {self.event}"
+
+    def clean(self):
+        super().clean()
+        if self._state.adding and self.event_id and self.event.status != "open":
+            raise ValidationError("Cannot create an order for an event that is not open.")
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding

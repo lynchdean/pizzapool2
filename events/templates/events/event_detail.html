@@ -1,3 +1,4 @@
+{% if event.status == 'open' %}
 <form method="post" action="{% url 'orders:claim_portions' event.id %}">
   {% csrf_token %}
   <p>
@@ -23,3 +24,6 @@
 
   <button type="submit">Claim</button>
 </form>
+{% else %}
+  <p>This event is no longer open for claims (status: {{ event.get_status_display }}).</p>
+{% endif %}
