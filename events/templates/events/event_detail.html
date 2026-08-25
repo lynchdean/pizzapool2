@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block content %}
 {% if event.status == 'open' %}
 <form method="post" action="{% url 'orders:claim_portions' event.id %}">
   {% csrf_token %}
@@ -5,25 +8,47 @@
     <label>Your name: <input type="text" name="claimant_name" required></label>
   </p>
 
-{% for order in orders %}
-  <h2>{{ order.menu_item.name }} ({{ order.available_count }} available)</h2>
-  {% if order.available_count > 0 %}
-    <label>
-      Quantity:
-      <select name="quantity_{{ order.id }}">
-        <option value="0">0</option>
-        {% for n in order.available_range %}
-          <option value="{{ n }}">{{ n }}</option>
-        {% endfor %}
-      </select>
-    </label>
-  {% else %}
-    <p>Sold out</p>
-  {% endif %}
+{% for item in menu_items %}
+  <h2>{{ item.name }}</h2>
+
+  {% for order in item.event_orders %}
+    {% if order.available_count > 0 %}
+      <p>
+        Round {{ forloop.counter }}: {{ order.available_count }} available
+        <label>
+          Quantity:
+          <select name="quantity_{{ order.id }}">
+            <option value="0">0</option>
+            {% for n in order.available_range %}
+              <option value="{{ n }}">{{ n }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </p>
+    {% else %}
+      <p>Round {{ forloop.counter }}: sold out</p>
+    {% endif %}
+  {% empty %}
+    <p>No orders started yet for this item.</p>
+  {% endfor %}
 {% endfor %}
 
   <button type="submit">Claim</button>
 </form>
+
+{% for item in menu_items %}
+  {% if item.is_active %}
+    <form method="post" action="{% url 'orders:start_order' event.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="menu_item_id" value="{{ item.id }}">
+      <button type="submit">
+        {% if item.event_orders %}Start another round of{% else %}Start an order for{% endif %} {{ item.name }}
+      </button>
+    </form>
+  {% endif %}
+{% endfor %}
+
 {% else %}
   <p>This event is no longer open for claims (status: {{ event.get_status_display }}).</p>
 {% endif %}
+{% endblock %}

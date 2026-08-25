@@ -61,7 +61,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -135,3 +135,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # phonenumber_field settings
 PHONENUMBER_DEFAULT_REGION = 'IE'
+
+# Auth
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'organisations:my_organisations'
+LOGOUT_REDIRECT_URL = 'login'
