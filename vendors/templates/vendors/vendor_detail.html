@@ -3,40 +3,63 @@
 {% block content %}
 <h1>{{ vendor.name }}</h1>
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save</button>
-</form>
-
-<form method="post" action="{% url 'organisations:vendor_delete' org_slug vendor.id %}"
-      onsubmit="return confirm('Delete this vendor?');">
-  {% csrf_token %}
-  <button type="submit">Delete vendor</button>
-</form>
-
-<a href="{% url 'organisations:organisation_detail' org_slug %}">Back to organisation</a>
-
-<h2>Menu items</h2>
-{% for item, item_form in item_forms %}
-  <form method="post" action="{% url 'organisations:menu_item_edit' org_slug vendor.id item.id %}">
+<article>
+  <form method="post">
     {% csrf_token %}
-    {{ item_form.as_p }}
+    {{ form.as_p }}
     <button type="submit">Save</button>
   </form>
-  <form method="post" action="{% url 'organisations:menu_item_delete' org_slug vendor.id item.id %}"
-        onsubmit="return confirm('Delete this menu item?');">
-    {% csrf_token %}
-    <button type="submit">Delete</button>
-  </form>
-{% empty %}
-  <p>No menu items yet.</p>
-{% endfor %}
 
-<h3>Add menu item</h3>
-<form method="post" action="{% url 'organisations:menu_item_create' org_slug vendor.id %}">
-  {% csrf_token %}
-  {{ new_item_form.as_p }}
-  <button type="submit">Add</button>
-</form>
+  <form method="post" action="{% url 'organisations:vendor_delete' org_slug vendor.id %}"
+        onsubmit="return confirm('Delete this vendor?');">
+    {% csrf_token %}
+    <button type="submit" class="secondary outline">Delete vendor</button>
+  </form>
+
+  <a href="{% url 'organisations:organisation_detail' org_slug %}">Back to organisation</a>
+</article>
+
+<article>
+  <header><strong>Menu items</strong></header>
+
+  {% for item, item_form in item_forms %}
+    <div class="item-row">
+      <form method="post" action="{% url 'organisations:menu_item_edit' org_slug vendor.id item.id %}">
+        {% csrf_token %}
+        <fieldset role="group">
+          {{ item_form.name }}
+          {{ item_form.portions_per_unit }}
+          {{ item_form.price }}
+          <label>{{ item_form.is_active }} Active</label>
+          <button type="submit">Save</button>
+        </fieldset>
+        {% if item_form.errors %}
+          <ul>
+            {% for field in item_form %}
+              {% for error in field.errors %}
+                <li class="error">{{ field.label }}: {{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </form>
+      <form method="post" action="{% url 'organisations:menu_item_delete' org_slug vendor.id item.id %}"
+            onsubmit="return confirm('Delete this menu item?');">
+        {% csrf_token %}
+        <button type="submit" class="secondary outline">Delete</button>
+      </form>
+    </div>
+  {% empty %}
+    <p>No menu items yet.</p>
+  {% endfor %}
+</article>
+
+<article>
+  <header><strong>Add menu item</strong></header>
+  <form method="post" action="{% url 'organisations:menu_item_create' org_slug vendor.id %}">
+    {% csrf_token %}
+    {{ new_item_form.as_p }}
+    <button type="submit">Add</button>
+  </form>
+</article>
 {% endblock %}

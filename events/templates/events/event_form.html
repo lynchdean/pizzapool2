@@ -3,10 +3,12 @@
 {% block content %}
 <h1>{% if event %}Edit event{% else %}Add event{% endif %}</h1>
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save</button>
-</form>
-<a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+<article>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+  </form>
+  <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+</article>
 {% endblock %}

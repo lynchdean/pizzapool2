@@ -1,54 +1,59 @@
 {% extends "base.html" %}
 
 {% block content %}
+<hgroup>
+  <h1>{{ event.name }}</h1>
+  <p>{{ event.vendor.name }} · {{ event.get_status_display }} · Deadline {{ event.deadline }}</p>
+</hgroup>
+
 {% if event.status == 'open' %}
-<form method="post" action="{% url 'orders:claim_portions' event.id %}">
-  {% csrf_token %}
-  <p>
-    <label>Your name: <input type="text" name="claimant_name" required></label>
-  </p>
+<article>
+  <form method="post" action="{% url 'orders:claim_portions' event.id %}" id="claim-form">
+    {% csrf_token %}
+    <fieldset role="group">
+      <input type="text" name="claimant_name" placeholder="Your name" required>
+      <button type="submit">Claim selected portions</button>
+    </fieldset>
+  </form>
+</article>
 
 {% for item in menu_items %}
-  <h2>{{ item.name }}</h2>
+<article>
+  <header><strong>{{ item.name }}</strong></header>
 
   {% for order in item.event_orders %}
     {% if order.available_count > 0 %}
-      <p>
-        Round {{ forloop.counter }}: {{ order.available_count }} available
-        <label>
-          Quantity:
-          <select name="quantity_{{ order.id }}">
-            <option value="0">0</option>
-            {% for n in order.available_range %}
-              <option value="{{ n }}">{{ n }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </p>
+      <div class="grid">
+        <label for="quantity_{{ order.id }}">Round {{ forloop.counter }}: {{ order.available_count }} available</label>
+        <select name="quantity_{{ order.id }}" id="quantity_{{ order.id }}" form="claim-form">
+          <option value="0">0</option>
+          {% for n in order.available_range %}
+            <option value="{{ n }}">{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
     {% else %}
       <p>Round {{ forloop.counter }}: sold out</p>
     {% endif %}
   {% empty %}
     <p>No orders started yet for this item.</p>
   {% endfor %}
-{% endfor %}
 
-  <button type="submit">Claim</button>
-</form>
-
-{% for item in menu_items %}
   {% if item.is_active %}
     <form method="post" action="{% url 'orders:start_order' event.id %}">
       {% csrf_token %}
       <input type="hidden" name="menu_item_id" value="{{ item.id }}">
-      <button type="submit">
-        {% if item.event_orders %}Start another round of{% else %}Start an order for{% endif %} {{ item.name }}
+      <button type="submit" class="secondary">
+        {% if item.event_orders %}Start another round{% else %}Start an order{% endif %}
       </button>
     </form>
   {% endif %}
+</article>
 {% endfor %}
 
 {% else %}
+<article>
   <p>This event is no longer open for claims (status: {{ event.get_status_display }}).</p>
+</article>
 {% endif %}
 {% endblock %}

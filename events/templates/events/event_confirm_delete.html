@@ -3,19 +3,21 @@
 {% block content %}
 <h1>Delete "{{ event.name }}"?</h1>
 
-{% if claimed_count %}
-  <p>
-    Can't delete this event — {{ claimed_count }} portion(s) have already been claimed.
-    Deleting an event permanently removes its orders and portions, and this event has
-    real claims on it.
-  </p>
-{% else %}
-  <p>This event has no claimed portions yet. Deleting it cannot be undone.</p>
-  <form method="post">
-    {% csrf_token %}
-    <button type="submit">Yes, delete this event</button>
-  </form>
-{% endif %}
+<article>
+  {% if claimed_count %}
+    <p>
+      Can't delete this event — {{ claimed_count }} portion(s) have already been claimed.
+      Deleting an event permanently removes its orders and portions, and this event has
+      real claims on it.
+    </p>
+  {% else %}
+    <p>This event has no claimed portions yet. Deleting it cannot be undone.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit">Yes, delete this event</button>
+    </form>
+  {% endif %}
 
-<a href="{% url 'organisations:organisation_detail' org_slug %}">Back to organisation</a>
+  <a href="{% url 'organisations:organisation_detail' org_slug %}">Back to organisation</a>
+</article>
 {% endblock %}

@@ -263,7 +263,8 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Start an order for Margherita")
+        self.assertContains(response, "Margherita")
+        self.assertContains(response, "Start an order")
         self.assertNotContains(response, "Round 1")
 
     def test_menu_item_with_open_order_offers_join_and_start_another_round(self):
@@ -275,7 +276,7 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "Round 1: 4 available")
-        self.assertContains(response, "Start another round of Margherita")
+        self.assertContains(response, "Start another round")
 
     def test_inactive_menu_item_with_existing_order_still_joinable_no_start_button(self):
         item = MenuItem.objects.create(
@@ -286,8 +287,8 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "Round 1: 4 available")
-        self.assertNotContains(response, "Start another round of Margherita")
-        self.assertNotContains(response, "Start an order for Margherita")
+        self.assertNotContains(response, "Start another round")
+        self.assertNotContains(response, "Start an order")
 
     def test_inactive_menu_item_with_no_orders_not_shown_at_all(self):
         MenuItem.objects.create(

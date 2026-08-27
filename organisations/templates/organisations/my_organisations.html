@@ -2,16 +2,18 @@
 
 {% block content %}
 <h1>My organisations</h1>
-{% if organisations %}
-  <ul>
-    {% for item in organisations %}
-      <li>
-        <a href="{% url 'organisations:organisation_detail' item.organisation.slug %}">{{ item.organisation.name }}</a>
-        {% if item.role %}({{ item.role }}){% endif %}
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>You're not a member of any organisation yet.</p>
-{% endif %}
+<article>
+  {% if organisations %}
+    <ul>
+      {% for item in organisations %}
+        <li>
+          <a href="{% url 'organisations:organisation_detail' item.organisation.slug %}">{{ item.organisation.name }}</a>
+          {% if item.role %}({{ item.role }}){% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You're not a member of any organisation yet.</p>
+  {% endif %}
+</article>
 {% endblock %}

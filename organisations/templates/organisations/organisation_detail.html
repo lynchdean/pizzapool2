@@ -3,38 +3,52 @@
 {% block content %}
 <h1>{{ organisation.name }}</h1>
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save</button>
-</form>
+<article>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+  </form>
+</article>
 
-<h2>Vendors</h2>
-{% if vendors %}
-  <ul>
-    {% for vendor in vendors %}
-      <li><a href="{% url 'organisations:vendor_detail' organisation.slug vendor.id %}">{{ vendor.name }}</a></li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>No vendors yet.</p>
-{% endif %}
-<a href="{% url 'organisations:vendor_create' organisation.slug %}">Add vendor</a>
+<div class="grid">
+  <article>
+    <header><strong>Vendors</strong></header>
+    {% if vendors %}
+      <ul>
+        {% for vendor in vendors %}
+          <li><a href="{% url 'organisations:vendor_detail' organisation.slug vendor.id %}">{{ vendor.name }}</a></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No vendors yet.</p>
+    {% endif %}
+    <footer>
+      <a href="{% url 'organisations:vendor_create' organisation.slug %}" role="button" class="secondary">Add vendor</a>
+    </footer>
+  </article>
 
-<h2>Events</h2>
-{% if events %}
-  <ul>
-    {% for event in events %}
-      <li>
-        {{ event.name }} — {{ event.vendor.name }} — {{ event.get_status_display }} — {{ event.deadline }}
-        <a href="{% url 'events:event_detail' organisation.slug event.id %}">View</a>
-        <a href="{% url 'organisations:event_edit' organisation.slug event.id %}">Edit</a>
-        <a href="{% url 'organisations:event_delete' organisation.slug event.id %}">Delete</a>
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>No events yet.</p>
-{% endif %}
-<a href="{% url 'organisations:event_create' organisation.slug %}">Add event</a>
+  <article>
+    <header><strong>Events</strong></header>
+    {% if events %}
+      <ul>
+        {% for event in events %}
+          <li>
+            {{ event.name }} — {{ event.vendor.name }} — {{ event.get_status_display }} — {{ event.deadline }}
+            <fieldset role="group">
+              <a href="{% url 'events:event_detail' organisation.slug event.id %}" role="button" class="outline">View</a>
+              <a href="{% url 'organisations:event_edit' organisation.slug event.id %}" role="button" class="outline">Edit</a>
+              <a href="{% url 'organisations:event_delete' organisation.slug event.id %}" role="button" class="outline secondary">Delete</a>
+            </fieldset>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No events yet.</p>
+    {% endif %}
+    <footer>
+      <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary">Add event</a>
+    </footer>
+  </article>
+</div>
 {% endblock %}

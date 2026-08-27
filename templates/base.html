@@ -1,31 +1,57 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}PizzaPool{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/pico.min.css' %}">
+  <style>
+    li.success { color: var(--pico-ins-color); }
+    li.error { color: var(--pico-del-color); }
+
+    .item-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .item-row form:first-child {
+      flex: 1;
+    }
+  </style>
 </head>
 <body>
-  <nav>
-    {% if user.is_authenticated %}
-      <a href="{% url 'organisations:my_organisations' %}">My organisations</a>
-      Logged in as {{ user.username }}
-      <form method="post" action="{% url 'logout' %}" style="display:inline">
-        {% csrf_token %}
-        <button type="submit">Log out</button>
-      </form>
-    {% else %}
-      <a href="{% url 'login' %}">Log in</a>
-    {% endif %}
+  <nav class="container">
+    <ul>
+      <li><strong>PizzaPool</strong></li>
+    </ul>
+    <ul>
+      {% if user.is_authenticated %}
+        <li><a href="{% url 'organisations:my_organisations' %}">My organisations</a></li>
+        <li>Logged in as {{ user.username }}</li>
+        <li>
+          <form method="post" action="{% url 'logout' %}" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="secondary">Log out</button>
+          </form>
+        </li>
+      {% else %}
+        <li><a href="{% url 'login' %}">Log in</a></li>
+      {% endif %}
+    </ul>
   </nav>
 
-  {% if messages %}
-    <ul>
-      {% for message in messages %}
-        <li>{{ message }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+  <main class="container">
+    {% if messages %}
+      <ul>
+        {% for message in messages %}
+          <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
 
-  {% block content %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
