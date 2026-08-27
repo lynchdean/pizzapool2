@@ -38,6 +38,12 @@ class ClaimPortionsByQuantityTests(TestCase):
             Portion.objects.filter(order=self.order, claimant_name="Alice").count(), 2
         )
 
+    def test_claim_persists_claimant_phone(self):
+        claim_portions_by_quantity(self.event, [(self.order.id, 1)], "Alice", "+353871234567")
+
+        portion = Portion.objects.get(order=self.order, claimant_name="Alice")
+        self.assertEqual(str(portion.claimant_phone), "+353871234567")
+
     def test_claim_raises_event_not_open_error_for_locked_submitted_completed(self):
         for status in ("locked", "submitted", "completed"):
             with self.subTest(status=status):
@@ -117,7 +123,7 @@ class CreateOrderTests(TestCase):
         order.full_clean()
 
 
-class ClaimPortionsViewTests(TestCase):
+class JoinOrderViewTests(TestCase):
     def setUp(self):
         self.organisation = Organisation.objects.create(name="Acme")
         self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
@@ -128,77 +134,90 @@ class ClaimPortionsViewTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            status="locked",
             deadline=timezone.now(),
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+        self.url = reverse("orders:join_order", args=[self.order.id])
+        self.valid_data = {
+            "claimant_name": "Bob",
+            "claimant_phone": "0871234567",
+            "quantity": 2,
+        }
 
-    def test_view_shows_error_and_claims_nothing_when_event_not_open(self):
-        response = self.client.post(
-            reverse("orders:claim_portions", args=[self.event.id]),
-            {"claimant_name": "Alice", f"quantity_{self.order.id}": "2"},
-            follow=True,
+    def test_get_redirects_without_claiming(self):
+        response = self.client.get(self.url)
+
+        self.assertRedirects(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
         )
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
+    def test_post_claims_portions_with_name_and_phone(self):
+        response = self.client.post(self.url, self.valid_data, follow=True)
+
+        claimed = Portion.objects.filter(order=self.order, claimant_name="Bob")
+        self.assertEqual(claimed.count(), 2)
+        self.assertTrue(claimed.exclude(claimant_phone="").exists())
+        self.assertContains(response, "Claimed 2 portion(s)!")
+
+    def test_nonexistent_order_returns_404(self):
+        url = reverse("orders:join_order", args=[999999])
+
+        response = self.client.post(url, self.valid_data)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_phone_shows_error_and_claims_nothing(self):
+        data = {**self.valid_data}
+        del data["claimant_phone"]
+
+        self.client.post(self.url, data, follow=True)
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
+    def test_non_numeric_quantity_shows_error_and_claims_nothing(self):
+        data = {**self.valid_data, "quantity": "abc"}
+
+        self.client.post(self.url, data, follow=True)
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
+    def test_quantity_exceeding_available_shows_error_and_claims_nothing(self):
+        data = {**self.valid_data, "quantity": self.menu_item.portions_per_unit + 1}
+
+        self.client.post(self.url, data, follow=True)
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
+    def test_shows_error_and_claims_nothing_when_event_not_open(self):
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.post(self.url, self.valid_data, follow=True)
 
         self.assertContains(response, "This event is no longer open for claims")
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
         )
 
-    def test_event_detail_hides_claim_form_when_event_not_open(self):
+    def test_event_detail_hides_join_form_when_event_not_open(self):
+        self.event.status = "locked"
+        self.event.save()
+
         response = self.client.get(
             reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
         )
 
         self.assertNotContains(response, "<form")
         self.assertContains(response, "This event is no longer open for claims")
-
-
-class ClaimPortionsMalformedInputTests(TestCase):
-    def setUp(self):
-        self.organisation = Organisation.objects.create(name="Acme")
-        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
-        self.menu_item = MenuItem.objects.create(
-            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
-        )
-        self.event = Event.objects.create(
-            organisation=self.organisation,
-            vendor=self.vendor,
-            name="Friday Lunch",
-            deadline=timezone.now(),
-        )
-        self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
-        self.url = reverse("orders:claim_portions", args=[self.event.id])
-
-    def test_malformed_quantity_value_is_ignored_not_500(self):
-        response = self.client.post(
-            self.url, {"claimant_name": "Alice", f"quantity_{self.order.id}": "abc"}, follow=True,
-        )
-
-        self.assertContains(response, "Please select at least one portion.")
-        self.assertEqual(
-            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
-        )
-
-    def test_malformed_order_id_in_key_is_ignored_not_500(self):
-        response = self.client.post(
-            self.url, {"claimant_name": "Alice", "quantity_abc": "2"}, follow=True,
-        )
-
-        self.assertContains(response, "Please select at least one portion.")
-        self.assertEqual(
-            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
-        )
-
-    def test_valid_quantity_still_claims_correctly(self):
-        response = self.client.post(
-            self.url, {"claimant_name": "Alice", f"quantity_{self.order.id}": "2"}, follow=True,
-        )
-
-        self.assertContains(response, "Claimed 2 portion(s)!")
-        self.assertEqual(
-            Portion.objects.filter(order=self.order, claimant_name="Alice").count(), 2
-        )
 
 
 class StartOrderViewTests(TestCase):
@@ -216,6 +235,12 @@ class StartOrderViewTests(TestCase):
             deadline=timezone.now(),
         )
         self.url = reverse("orders:start_order", args=[self.event.id])
+        self.valid_data = {
+            "menu_item_id": self.menu_item.id,
+            "claimant_name": "Alice",
+            "claimant_phone": "0871234567",
+            "quantity": 2,
+        }
 
     def test_get_redirects_without_creating_order(self):
         response = self.client.get(self.url)
@@ -225,17 +250,18 @@ class StartOrderViewTests(TestCase):
         )
         self.assertFalse(Order.objects.filter(event=self.event).exists())
 
-    def test_post_creates_order_for_active_menu_item(self):
-        response = self.client.post(self.url, {"menu_item_id": self.menu_item.id}, follow=True)
+    def test_post_creates_order_and_claims_portions_for_starter(self):
+        response = self.client.post(self.url, self.valid_data, follow=True)
 
-        self.assertTrue(Order.objects.filter(event=self.event, menu_item=self.menu_item).exists())
+        order = Order.objects.get(event=self.event, menu_item=self.menu_item)
+        self.assertEqual(Portion.objects.filter(order=order, claimant_name="Alice").count(), 2)
         self.assertContains(response, "Started a new order for Margherita")
 
     def test_post_rejects_inactive_menu_item(self):
         self.menu_item.is_active = False
         self.menu_item.save()
 
-        response = self.client.post(self.url, {"menu_item_id": self.menu_item.id})
+        response = self.client.post(self.url, self.valid_data)
 
         self.assertEqual(response.status_code, 404)
         self.assertFalse(Order.objects.filter(event=self.event).exists())
@@ -244,8 +270,9 @@ class StartOrderViewTests(TestCase):
         other_item = MenuItem.objects.create(
             vendor=self.other_vendor, name="Not This Event's Item", portions_per_unit=4, price="10.00"
         )
+        data = {**self.valid_data, "menu_item_id": other_item.id}
 
-        response = self.client.post(self.url, {"menu_item_id": other_item.id})
+        response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, 404)
         self.assertFalse(Order.objects.filter(event=self.event).exists())
@@ -254,16 +281,36 @@ class StartOrderViewTests(TestCase):
         self.event.status = "locked"
         self.event.save()
 
-        response = self.client.post(self.url, {"menu_item_id": self.menu_item.id}, follow=True)
+        response = self.client.post(self.url, self.valid_data, follow=True)
 
         self.assertContains(response, "This event is no longer open for new orders.")
+        self.assertFalse(Order.objects.filter(event=self.event).exists())
+
+    def test_post_rejects_quantity_exceeding_portions_per_unit(self):
+        data = {**self.valid_data, "quantity": self.menu_item.portions_per_unit + 1}
+
+        self.client.post(self.url, data, follow=True)
+
+        self.assertFalse(Order.objects.filter(event=self.event).exists())
+        self.assertFalse(
+            Portion.objects.filter(order__event=self.event, claimant_name__isnull=False).exists()
+        )
+
+    def test_post_requires_phone(self):
+        data = {**self.valid_data}
+        del data["claimant_phone"]
+
+        self.client.post(self.url, data, follow=True)
+
         self.assertFalse(Order.objects.filter(event=self.event).exists())
 
     def test_anonymous_user_can_start_order(self):
         # Deliberate: starting an order is public, same as claiming portions —
         # do not add a login requirement here without revisiting that decision.
         # No force_login() call in this test — the client is anonymous.
-        response = self.client.post(self.url, {"menu_item_id": self.menu_item.id})
+        response = self.client.post(self.url, self.valid_data)
 
-        self.assertTrue(Order.objects.filter(event=self.event, menu_item=self.menu_item).exists())
+        order = Order.objects.filter(event=self.event, menu_item=self.menu_item).first()
+        self.assertIsNotNone(order)
+        self.assertTrue(Portion.objects.filter(order=order, claimant_name="Alice").exists())
         self.assertNotEqual(response.status_code, 403)

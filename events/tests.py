@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from orders.models import Order, Portion
+from orders.services import claim_portions_by_quantity
 from organisations.models import Organisation, OrganisationMembership
 from vendors.models import MenuItem, Vendor
 
@@ -256,7 +257,7 @@ class EventDetailViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_menu_item_with_no_orders_offers_start_button(self):
+    def test_menu_item_with_no_orders_offers_start_section(self):
         MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
@@ -264,31 +265,100 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "Margherita")
-        self.assertContains(response, "Start an order")
+        self.assertContains(response, "Start a new order")
+        self.assertContains(response, '<option value="" disabled selected>Choose a menu item</option>')
         self.assertNotContains(response, "Round 1")
 
-    def test_menu_item_with_open_order_offers_join_and_start_another_round(self):
+    def test_menu_item_with_open_order_offers_join_and_the_start_section_stays(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
-        Order.objects.create(event=self.event, menu_item=item)
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Round 1: 4 available")
-        self.assertContains(response, "Start another round")
+        self.assertContains(response, "Join (3 left)")
+        self.assertContains(response, "Start a new order")
+
+    def test_start_section_dropdown_lists_only_active_menu_items(self):
+        margherita = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        pepperoni = MenuItem.objects.create(
+            vendor=self.vendor, name="Pepperoni", portions_per_unit=4, price="12.00"
+        )
+        MenuItem.objects.create(
+            vendor=self.vendor, name="Discontinued Pizza", portions_per_unit=4, price="9.00",
+            is_active=False,
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, f'<option value="{margherita.id}">Margherita</option>')
+        self.assertContains(response, f'<option value="{pepperoni.id}">Pepperoni</option>')
+        self.assertNotContains(response, "Discontinued Pizza")
 
     def test_inactive_menu_item_with_existing_order_still_joinable_no_start_button(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00", is_active=False
         )
-        Order.objects.create(event=self.event, menu_item=item)
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Round 1: 4 available")
-        self.assertNotContains(response, "Start another round")
+        self.assertContains(response, "Join (3 left)")
+        self.assertNotContains(response, "Start another order")
         self.assertNotContains(response, "Start an order")
+
+    def test_order_header_shows_earliest_claimant_as_starter(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Alice's order")
+
+    def test_order_shows_claimant_roster_with_name_and_phone(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "+353871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Alice")
+        self.assertContains(response, "1 portion")
+        self.assertContains(response, "+353871234567")
+
+    def test_repeat_claims_by_same_person_grouped_into_one_roster_line(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "2 portions")
+
+    def test_fully_claimed_order_shows_completion_indicator(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Full")
+        self.assertNotContains(response, "Join (")
 
     def test_inactive_menu_item_with_no_orders_not_shown_at_all(self):
         MenuItem.objects.create(

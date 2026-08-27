@@ -3,52 +3,52 @@ from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from events.models import Event
 from vendors.models import MenuItem
+from .forms import JoinOrderForm, StartOrderForm
+from .models import Order
 from .services import (
     claim_portions_by_quantity,
-    create_order,
+    start_order_and_claim,
     NotEnoughPortionsError,
     EventNotOpenError,
 )
 
 
-def claim_portions_view(request, event_id):
-    event = get_object_or_404(Event.objects.select_related('organisation'), pk=event_id)
+def _flash_form_errors(request, form):
+    for field_errors in form.errors.values():
+        for error in field_errors:
+            messages.error(request, error)
+
+
+def join_order_view(request, order_id):
+    order = get_object_or_404(
+        Order.objects.select_related('event', 'event__organisation'), pk=order_id
+    )
+    event = order.event
 
     if request.method != 'POST':
-        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.id)
 
-    claimant_name = request.POST.get('claimant_name', '').strip()
+    max_quantity = order.portions.filter(claimant_name__isnull=True).count()
+    form = JoinOrderForm(request.POST, max_quantity=max_quantity)
 
-    if not claimant_name:
-        messages.error(request, "Please enter your name.")
-        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
-
-    # Collect quantity_<order_id> fields from the form
-    requests = []
-    for key, value in request.POST.items():
-        if not key.startswith('quantity_'):
-            continue
-        order_id_part = key[len('quantity_'):]
-        if not order_id_part.isdigit() or not value.isdigit():
-            continue
-        order_id = int(order_id_part)
-        quantity = int(value)
-        if quantity > 0:
-            requests.append((order_id, quantity))
-
-    if not requests:
-        messages.error(request, "Please select at least one portion.")
-        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+    if not form.is_valid():
+        _flash_form_errors(request, form)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.id)
 
     try:
-        claimed = claim_portions_by_quantity(event, requests, claimant_name)
+        claimed = claim_portions_by_quantity(
+            event,
+            [(order.id, form.cleaned_data['quantity'])],
+            form.cleaned_data['claimant_name'],
+            form.cleaned_data['claimant_phone'],
+        )
         messages.success(request, f"Claimed {len(claimed)} portion(s)!")
     except EventNotOpenError:
         messages.error(request, "This event is no longer open for claims.")
     except NotEnoughPortionsError:
-        messages.error(request, "Sorry, not enough available in one of your selections. Nothing was claimed — please try again.")
+        messages.error(request, "Sorry, someone else just claimed those. Please try again.")
 
-    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.id)
 
 
 def start_order_view(request, event_id):
@@ -64,11 +64,27 @@ def start_order_view(request, event_id):
         return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
     menu_item = get_object_or_404(MenuItem, pk=menu_item_id, vendor=event.vendor, is_active=True)
+    form = StartOrderForm(request.POST, max_quantity=menu_item.portions_per_unit)
+
+    if not form.is_valid():
+        _flash_form_errors(request, form)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
     try:
-        create_order(event, menu_item)
-        messages.success(request, f"Started a new order for {menu_item.name}.")
+        order, claimed = start_order_and_claim(
+            event,
+            menu_item,
+            form.cleaned_data['quantity'],
+            form.cleaned_data['claimant_name'],
+            form.cleaned_data['claimant_phone'],
+        )
+        messages.success(
+            request,
+            f"Started a new order for {menu_item.name} and claimed {len(claimed)} portion(s)!",
+        )
     except EventNotOpenError:
         messages.error(request, "This event is no longer open for new orders.")
+    except NotEnoughPortionsError:
+        messages.error(request, "You can't claim more portions than the order will contain.")
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)

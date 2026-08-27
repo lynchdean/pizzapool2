@@ -12,6 +12,7 @@ def create_order(event, menu_item):
             raise EventNotOpenError(locked_event.pk, locked_event.status)
         return Order.objects.create(event=locked_event, menu_item=menu_item)
 
+
 class NotEnoughPortionsError(Exception):
     def __init__(self, order_id, requested, available):
         self.order_id = order_id
@@ -27,7 +28,7 @@ class EventNotOpenError(Exception):
         super().__init__(f"Event {event_id} is not open (status={status})")
 
 
-def claim_portions_by_quantity(event, requests, claimant_name):
+def claim_portions_by_quantity(event, requests, claimant_name, claimant_phone=None):
     """
     event: the Event the given order_ids are expected to belong to. Re-fetched
         and locked inside the transaction so a status change racing with this
@@ -69,7 +70,30 @@ def claim_portions_by_quantity(event, requests, claimant_name):
         now = timezone.now()
         for portion in claimed_portions:
             portion.claimant_name = claimant_name
+            portion.claimant_phone = claimant_phone
             portion.claimed_at = now
             portion.save()
 
     return claimed_portions
+
+
+def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_phone=None):
+    """
+    Atomically creates a new Order for menu_item within event and immediately
+    claims `quantity` of its own freshly-generated portions for the starter.
+    Order creation and the starter's own claim succeed or fail together: if
+    the claim fails (event flips status mid-request, or quantity exceeds
+    menu_item.portions_per_unit) the whole transaction rolls back and no
+    orphaned zero-claim order is left behind.
+    """
+    with transaction.atomic():
+        locked_event = Event.objects.select_for_update().get(pk=event.pk)
+        if locked_event.status != "open":
+            raise EventNotOpenError(locked_event.pk, locked_event.status)
+
+        order = Order.objects.create(event=locked_event, menu_item=menu_item)
+        claimed = claim_portions_by_quantity(
+            locked_event, [(order.id, quantity)], claimant_name, claimant_phone
+        )
+
+    return order, claimed
