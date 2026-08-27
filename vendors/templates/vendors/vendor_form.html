@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Add vendor</h1>
+<h1>{% if vendor %}Edit vendor{% else %}Add vendor{% endif %}</h1>
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save</button>
-</form>
-<a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+<article>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+  </form>
+  {% if vendor %}
+    <a href="{% url 'organisations:vendor_detail' organisation.slug vendor.id %}">Cancel</a>
+  {% else %}
+    <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+  {% endif %}
+</article>
 {% endblock %}

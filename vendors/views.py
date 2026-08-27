@@ -13,9 +13,8 @@ def _get_org_vendor(org_slug, vendor_id):
     return get_object_or_404(Vendor, pk=vendor_id, organisation__slug=org_slug)
 
 
-def _vendor_detail_context(vendor, org_slug, vendor_form=None,
+def _vendor_detail_context(vendor, org_slug,
                             new_item_form=None, edited_item_id=None, edited_item_form=None):
-    vendor_form = vendor_form or VendorForm(instance=vendor, organisation=vendor.organisation)
     new_item_form = new_item_form or MenuItemForm(vendor=vendor)
 
     item_forms = []
@@ -28,7 +27,6 @@ def _vendor_detail_context(vendor, org_slug, vendor_form=None,
     return {
         'org_slug': org_slug,
         'vendor': vendor,
-        'form': vendor_form,
         'item_forms': item_forms,
         'new_item_form': new_item_form,
     }
@@ -57,16 +55,27 @@ def vendor_create(request, org_slug):
 def vendor_detail(request, org_slug, vendor_id):
     vendor = _get_org_vendor(org_slug, vendor_id)
 
+    return render(request, 'vendors/vendor_detail.html', _vendor_detail_context(vendor, org_slug))
+
+
+@organisation_member_required
+def vendor_edit(request, org_slug, vendor_id):
+    vendor = _get_org_vendor(org_slug, vendor_id)
+
     if request.method == 'POST':
         form = VendorForm(request.POST, instance=vendor, organisation=vendor.organisation)
         if form.is_valid():
             form.save()
             messages.success(request, "Vendor updated.")
             return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor.id)
-        return render(request, 'vendors/vendor_detail.html',
-                       _vendor_detail_context(vendor, org_slug, vendor_form=form))
+    else:
+        form = VendorForm(instance=vendor, organisation=vendor.organisation)
 
-    return render(request, 'vendors/vendor_detail.html', _vendor_detail_context(vendor, org_slug))
+    return render(request, 'vendors/vendor_form.html', {
+        'organisation': vendor.organisation,
+        'vendor': vendor,
+        'form': form,
+    })
 
 
 @organisation_member_required

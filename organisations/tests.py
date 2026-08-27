@@ -204,6 +204,47 @@ class OrganisationDetailViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_post_to_dashboard_does_not_update_organisation_name(self):
+        self.client.force_login(self.member)
+
+        self.client.post(self.url, {"name": "Should Not Save"})
+
+        self.organisation.refresh_from_db()
+        self.assertEqual(self.organisation.name, "Acme")
+
+    def test_dashboard_shows_edit_link(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(
+            response, reverse("organisations:organisation_edit", args=[self.organisation.slug])
+        )
+
+
+class OrganisationEditViewTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.member = User.objects.create_user(username="member", password="pw")
+        OrganisationMembership.objects.create(
+            user=self.member, organisation=self.organisation, role="owner"
+        )
+        self.other_user = User.objects.create_user(username="other", password="pw")
+        self.url = reverse("organisations:organisation_edit", args=[self.organisation.slug])
+
+    def test_anonymous_redirected_to_login(self):
+        response = self.client.get(self.url)
+
+        expected_url = f"{reverse('login')}?next={self.url}"
+        self.assertRedirects(response, expected_url)
+
+    def test_non_member_gets_403(self):
+        self.client.force_login(self.other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
     def test_post_updates_organisation_name_and_redirects_to_new_slug(self):
         self.client.force_login(self.member)
 

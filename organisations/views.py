@@ -31,6 +31,17 @@ def my_organisations(request):
 def organisation_detail(request, org_slug):
     organisation = get_object_or_404(Organisation, slug=org_slug)
 
+    return render(request, 'organisations/organisation_detail.html', {
+        'organisation': organisation,
+        'vendors': organisation.vendors.all(),
+        'events': organisation.events.select_related('vendor').all(),
+    })
+
+
+@organisation_member_required
+def organisation_edit(request, org_slug):
+    organisation = get_object_or_404(Organisation, slug=org_slug)
+
     if request.method == 'POST':
         form = OrganisationForm(request.POST, instance=organisation)
         if form.is_valid():
@@ -40,9 +51,7 @@ def organisation_detail(request, org_slug):
     else:
         form = OrganisationForm(instance=organisation)
 
-    return render(request, 'organisations/organisation_detail.html', {
+    return render(request, 'organisations/organisation_edit.html', {
         'organisation': organisation,
         'form': form,
-        'vendors': organisation.vendors.all(),
-        'events': organisation.events.select_related('vendor').all(),
     })

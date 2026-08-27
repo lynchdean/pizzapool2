@@ -4,11 +4,7 @@
 <h1>{{ organisation.name }}</h1>
 
 <article>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-  </form>
+  <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary outline">Edit organisation</a>
 </article>
 
 <div class="grid">

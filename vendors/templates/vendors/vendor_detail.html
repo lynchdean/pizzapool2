@@ -4,11 +4,9 @@
 <h1>{{ vendor.name }}</h1>
 
 <article>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-  </form>
+  <p>{{ vendor.contact_info|default:"No contact info provided." }}</p>
+
+  <a href="{% url 'organisations:vendor_edit' org_slug vendor.id %}" role="button" class="secondary outline">Edit vendor</a>
 
   <form method="post" action="{% url 'organisations:vendor_delete' org_slug vendor.id %}"
         onsubmit="return confirm('Delete this vendor?');">

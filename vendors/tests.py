@@ -89,14 +89,23 @@ class VendorDetailViewTests(TestCase):
         self.assertContains(response, "Pizza Place")
         self.assertContains(response, "Margherita")
 
-    def test_post_updates_vendor_fields(self):
+    def test_post_to_detail_page_does_not_update_vendor_fields(self):
         self.client.force_login(self.member)
 
-        response = self.client.post(self.url, {"name": "Pizza Place Renamed", "contact_info": "x"})
+        self.client.post(self.url, {"name": "Should Not Save", "contact_info": "x"})
 
-        self.assertRedirects(response, self.url)
         self.vendor.refresh_from_db()
-        self.assertEqual(self.vendor.name, "Pizza Place Renamed")
+        self.assertEqual(self.vendor.name, "Pizza Place")
+
+    def test_shows_edit_link(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(
+            response,
+            reverse("organisations:vendor_edit", args=[self.organisation.slug, self.vendor.id]),
+        )
 
     def test_vendor_belonging_to_other_organisation_returns_404(self):
         # Member of BOTH orgs, so the outer organisation_member_required check
@@ -112,6 +121,43 @@ class VendorDetailViewTests(TestCase):
         response = self.client.get(other_org_url)
 
         self.assertEqual(response.status_code, 404)
+
+
+class VendorEditViewTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.member = User.objects.create_user(username="member", password="pw")
+        OrganisationMembership.objects.create(
+            user=self.member, organisation=self.organisation, role="owner"
+        )
+        self.other_user = User.objects.create_user(username="other", password="pw")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        self.url = reverse("organisations:vendor_edit", args=[self.organisation.slug, self.vendor.id])
+
+    def test_anonymous_redirected_to_login(self):
+        response = self.client.get(self.url)
+
+        expected_url = f"{reverse('login')}?next={self.url}"
+        self.assertRedirects(response, expected_url)
+
+    def test_non_member_gets_403(self):
+        self.client.force_login(self.other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_post_updates_vendor_fields(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(self.url, {"name": "Pizza Place Renamed", "contact_info": "x"})
+
+        detail_url = reverse(
+            "organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id]
+        )
+        self.assertRedirects(response, detail_url)
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.name, "Pizza Place Renamed")
 
 
 class VendorDeleteViewTests(TestCase):
