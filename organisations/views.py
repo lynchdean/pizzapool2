@@ -28,15 +28,15 @@ def my_organisations(request):
 
 
 @organisation_member_required
-def organisation_detail(request, organisation_id):
-    organisation = get_object_or_404(Organisation, pk=organisation_id)
+def organisation_detail(request, org_slug):
+    organisation = get_object_or_404(Organisation, slug=org_slug)
 
     if request.method == 'POST':
         form = OrganisationForm(request.POST, instance=organisation)
         if form.is_valid():
             form.save()
             messages.success(request, "Organisation updated.")
-            return redirect('organisations:organisation_detail', organisation_id=organisation.id)
+            return redirect('organisations:organisation_detail', org_slug=organisation.slug)
     else:
         form = OrganisationForm(instance=organisation)
 

@@ -18,7 +18,7 @@ class VendorCreateViewTests(TestCase):
             user=self.member, organisation=self.organisation, role="owner"
         )
         self.other_user = User.objects.create_user(username="other", password="pw")
-        self.url = reverse("organisations:vendor_create", args=[self.organisation.id])
+        self.url = reverse("organisations:vendor_create", args=[self.organisation.slug])
 
     def test_anonymous_redirected_to_login(self):
         response = self.client.get(self.url)
@@ -42,7 +42,7 @@ class VendorCreateViewTests(TestCase):
         self.assertEqual(vendor.organisation, self.organisation)
         self.assertRedirects(
             response,
-            reverse("organisations:vendor_detail", args=[self.organisation.id, vendor.id]),
+            reverse("organisations:vendor_detail", args=[self.organisation.slug, vendor.id]),
         )
 
     def test_duplicate_name_in_same_org_shows_form_error_not_500(self):
@@ -72,7 +72,7 @@ class VendorDetailViewTests(TestCase):
         self.item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
-        self.url = reverse("organisations:vendor_detail", args=[self.organisation.id, self.vendor.id])
+        self.url = reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
 
     def test_non_member_gets_403(self):
         self.client.force_login(self.other_user)
@@ -106,7 +106,7 @@ class VendorDetailViewTests(TestCase):
         )
         self.client.force_login(self.member)
         other_org_url = reverse(
-            "organisations:vendor_detail", args=[self.other_organisation.id, self.vendor.id]
+            "organisations:vendor_detail", args=[self.other_organisation.slug, self.vendor.id]
         )
 
         response = self.client.get(other_org_url)
@@ -125,12 +125,12 @@ class VendorDeleteViewTests(TestCase):
 
     def test_deletes_vendor_with_no_events(self):
         self.client.force_login(self.member)
-        url = reverse("organisations:vendor_delete", args=[self.organisation.id, self.vendor.id])
+        url = reverse("organisations:vendor_delete", args=[self.organisation.slug, self.vendor.id])
 
         response = self.client.post(url)
 
         self.assertRedirects(
-            response, reverse("organisations:organisation_detail", args=[self.organisation.id])
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
         self.assertFalse(Vendor.objects.filter(pk=self.vendor.id).exists())
 
@@ -139,7 +139,7 @@ class VendorDeleteViewTests(TestCase):
             organisation=self.organisation, vendor=self.vendor, name="Lunch", deadline=timezone.now()
         )
         self.client.force_login(self.member)
-        url = reverse("organisations:vendor_delete", args=[self.organisation.id, self.vendor.id])
+        url = reverse("organisations:vendor_delete", args=[self.organisation.slug, self.vendor.id])
 
         response = self.client.post(url, follow=True)
 
@@ -161,19 +161,19 @@ class MenuItemViewTests(TestCase):
         self.client.force_login(self.member)
 
     def test_create_menu_item(self):
-        url = reverse("organisations:menu_item_create", args=[self.organisation.id, self.vendor.id])
+        url = reverse("organisations:menu_item_create", args=[self.organisation.slug, self.vendor.id])
 
         response = self.client.post(
             url, {"name": "Pepperoni", "portions_per_unit": 8, "price": "15.00", "is_active": "on"}
         )
 
         self.assertRedirects(
-            response, reverse("organisations:vendor_detail", args=[self.organisation.id, self.vendor.id])
+            response, reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
         )
         self.assertTrue(MenuItem.objects.filter(vendor=self.vendor, name="Pepperoni").exists())
 
     def test_duplicate_name_for_same_vendor_shows_form_error(self):
-        url = reverse("organisations:menu_item_create", args=[self.organisation.id, self.vendor.id])
+        url = reverse("organisations:menu_item_create", args=[self.organisation.slug, self.vendor.id])
 
         response = self.client.post(
             url, {"name": "Margherita", "portions_per_unit": 4, "price": "10.00", "is_active": "on"}
@@ -188,7 +188,7 @@ class MenuItemViewTests(TestCase):
 
     def test_edit_menu_item(self):
         url = reverse(
-            "organisations:menu_item_edit", args=[self.organisation.id, self.vendor.id, self.item.id]
+            "organisations:menu_item_edit", args=[self.organisation.slug, self.vendor.id, self.item.id]
         )
 
         response = self.client.post(
@@ -196,20 +196,20 @@ class MenuItemViewTests(TestCase):
         )
 
         self.assertRedirects(
-            response, reverse("organisations:vendor_detail", args=[self.organisation.id, self.vendor.id])
+            response, reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
         )
         self.item.refresh_from_db()
         self.assertEqual(self.item.name, "Margherita Deluxe")
 
     def test_delete_menu_item_with_no_orders(self):
         url = reverse(
-            "organisations:menu_item_delete", args=[self.organisation.id, self.vendor.id, self.item.id]
+            "organisations:menu_item_delete", args=[self.organisation.slug, self.vendor.id, self.item.id]
         )
 
         response = self.client.post(url)
 
         self.assertRedirects(
-            response, reverse("organisations:vendor_detail", args=[self.organisation.id, self.vendor.id])
+            response, reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
         )
         self.assertFalse(MenuItem.objects.filter(pk=self.item.id).exists())
 
@@ -219,7 +219,7 @@ class MenuItemViewTests(TestCase):
         )
         Order.objects.create(event=event, menu_item=self.item)
         url = reverse(
-            "organisations:menu_item_delete", args=[self.organisation.id, self.vendor.id, self.item.id]
+            "organisations:menu_item_delete", args=[self.organisation.slug, self.vendor.id, self.item.id]
         )
 
         response = self.client.post(url, follow=True)

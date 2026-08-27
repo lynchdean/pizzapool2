@@ -146,7 +146,9 @@ class ClaimPortionsViewTests(TestCase):
         )
 
     def test_event_detail_hides_claim_form_when_event_not_open(self):
-        response = self.client.get(reverse("events:event_detail", args=[self.event.id]))
+        response = self.client.get(
+            reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+        )
 
         self.assertNotContains(response, "<form")
         self.assertContains(response, "This event is no longer open for claims")
@@ -171,7 +173,9 @@ class StartOrderViewTests(TestCase):
     def test_get_redirects_without_creating_order(self):
         response = self.client.get(self.url)
 
-        self.assertRedirects(response, reverse("events:event_detail", args=[self.event.id]))
+        self.assertRedirects(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+        )
         self.assertFalse(Order.objects.filter(event=self.event).exists())
 
     def test_post_creates_order_for_active_menu_item(self):

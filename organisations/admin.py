@@ -4,7 +4,8 @@ from .models import Organisation, OrganisationMembership
 
 @admin.register(Organisation)
 class OrganisationAdmin(admin.ModelAdmin):
-    list_display = ("name", "created_at")
+    list_display = ("name", "slug", "created_at")
+    readonly_fields = ("slug",)
 
 
 @admin.register(OrganisationMembership)

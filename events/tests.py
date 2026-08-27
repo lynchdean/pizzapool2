@@ -22,7 +22,7 @@ class EventCreateViewTests(TestCase):
         self.other_user = User.objects.create_user(username="other", password="pw")
         self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
         self.other_vendor = Vendor.objects.create(organisation=self.other_organisation, name="Other Vendor")
-        self.url = reverse("organisations:event_create", args=[self.organisation.id])
+        self.url = reverse("organisations:event_create", args=[self.organisation.slug])
 
     def test_anonymous_redirected_to_login(self):
         response = self.client.get(self.url)
@@ -51,7 +51,7 @@ class EventCreateViewTests(TestCase):
         event = Event.objects.get(name="Friday Lunch")
         self.assertEqual(event.organisation, self.organisation)
         self.assertRedirects(
-            response, reverse("organisations:organisation_detail", args=[self.organisation.id])
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
 
     def test_vendor_choices_restricted_to_organisations_own_vendors(self):
@@ -93,7 +93,7 @@ class EventEditViewTests(TestCase):
         self.item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
-        self.url = reverse("organisations:event_edit", args=[self.organisation.id, self.event.id])
+        self.url = reverse("organisations:event_edit", args=[self.organisation.slug, self.event.id])
         self.client.force_login(self.member)
 
     def test_member_can_edit_event_fields(self):
@@ -105,7 +105,7 @@ class EventEditViewTests(TestCase):
         })
 
         self.assertRedirects(
-            response, reverse("organisations:organisation_detail", args=[self.organisation.id])
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
         self.event.refresh_from_db()
         self.assertEqual(self.event.name, "Friday Lunch (updated)")
@@ -125,7 +125,7 @@ class EventEditViewTests(TestCase):
         self.assertEqual(self.event.vendor, self.vendor)
 
     def test_event_belonging_to_other_organisation_returns_404(self):
-        url = reverse("organisations:event_edit", args=[self.other_organisation.id, self.event.id])
+        url = reverse("organisations:event_edit", args=[self.other_organisation.slug, self.event.id])
 
         response = self.client.get(url)
 
@@ -197,7 +197,7 @@ class EventDeleteViewTests(TestCase):
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
         )
-        self.url = reverse("organisations:event_delete", args=[self.organisation.id, self.event.id])
+        self.url = reverse("organisations:event_delete", args=[self.organisation.slug, self.event.id])
         self.client.force_login(self.member)
 
     def test_get_shows_confirmation_with_zero_claimed_count(self):
@@ -211,7 +211,7 @@ class EventDeleteViewTests(TestCase):
         response = self.client.post(self.url)
 
         self.assertRedirects(
-            response, reverse("organisations:organisation_detail", args=[self.organisation.id])
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
         self.assertFalse(Event.objects.filter(pk=self.event.pk).exists())
 
@@ -245,7 +245,16 @@ class EventDetailViewTests(TestCase):
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
         )
-        self.url = reverse("events:event_detail", args=[self.event.id])
+        self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+
+    def test_wrong_org_slug_returns_404(self):
+        other_org = Organisation.objects.create(name="Other Co")
+
+        response = self.client.get(
+            reverse("events:event_detail", args=[other_org.slug, self.event.id])
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_menu_item_with_no_orders_offers_start_button(self):
         MenuItem.objects.create(

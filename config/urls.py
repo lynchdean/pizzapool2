@@ -22,7 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
-    path('organisations/', include('organisations.urls')),
-    path('events/', include('events.urls')),
     path('orders/', include('orders.urls')),
+    path('<slug:org_slug>/', include('events.urls')),
+    path('', include('organisations.urls')),
 ]

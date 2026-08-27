@@ -12,15 +12,16 @@ from .services import (
 
 
 def claim_portions_view(request, event_id):
-    if request.method != 'POST':
-        return redirect('events:event_detail', event_id=event_id)
+    event = get_object_or_404(Event.objects.select_related('organisation'), pk=event_id)
 
-    event = get_object_or_404(Event, pk=event_id)
+    if request.method != 'POST':
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+
     claimant_name = request.POST.get('claimant_name', '').strip()
 
     if not claimant_name:
         messages.error(request, "Please enter your name.")
-        return redirect('events:event_detail', event_id=event_id)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
     # Collect quantity_<order_id> fields from the form
     requests = []
@@ -33,7 +34,7 @@ def claim_portions_view(request, event_id):
 
     if not requests:
         messages.error(request, "Please select at least one portion.")
-        return redirect('events:event_detail', event_id=event_id)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
     try:
         claimed = claim_portions_by_quantity(event, requests, claimant_name)
@@ -43,19 +44,20 @@ def claim_portions_view(request, event_id):
     except NotEnoughPortionsError:
         messages.error(request, "Sorry, not enough available in one of your selections. Nothing was claimed — please try again.")
 
-    return redirect('events:event_detail', event_id=event_id)
+    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
 
 def start_order_view(request, event_id):
-    if request.method != 'POST':
-        return redirect('events:event_detail', event_id=event_id)
+    event = get_object_or_404(Event.objects.select_related('organisation'), pk=event_id)
 
-    event = get_object_or_404(Event, pk=event_id)
+    if request.method != 'POST':
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+
     menu_item_id = request.POST.get('menu_item_id', '')
 
     if not menu_item_id.isdigit():
         messages.error(request, "Invalid menu item selection.")
-        return redirect('events:event_detail', event_id=event_id)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
     menu_item = get_object_or_404(MenuItem, pk=menu_item_id, vendor=event.vendor, is_active=True)
 
@@ -65,4 +67,4 @@ def start_order_view(request, event_id):
     except EventNotOpenError:
         messages.error(request, "This event is no longer open for new orders.")
 
-    return redirect('events:event_detail', event_id=event_id)
+    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)

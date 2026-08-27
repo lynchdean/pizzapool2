@@ -1,5 +1,5 @@
 from django.contrib.auth.models import AnonymousUser, User
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -13,8 +13,37 @@ from .permissions import organisation_member_required, user_can_access_organisat
 
 
 @organisation_member_required
-def _dummy_view(request, organisation_id):
+def _dummy_view(request, org_slug):
     return HttpResponse("ok")
+
+
+class OrganisationSlugTests(TestCase):
+    def test_slug_auto_generated_from_name(self):
+        org = Organisation.objects.create(name="Dean's Office")
+
+        self.assertEqual(org.slug, "deans-office")
+
+    def test_colliding_slugs_get_disambiguated(self):
+        org1 = Organisation.objects.create(name="Cafe")
+        org2 = Organisation.objects.create(name="Café")
+
+        self.assertEqual(org1.slug, "cafe")
+        self.assertEqual(org2.slug, "cafe-2")
+
+    def test_renaming_changes_the_slug(self):
+        org = Organisation.objects.create(name="Old Name")
+        self.assertEqual(org.slug, "old-name")
+
+        org.name = "New Name"
+        org.save()
+
+        self.assertEqual(org.slug, "new-name")
+
+    def test_reserved_name_raises_validation_error(self):
+        org = Organisation(name="Orders")
+
+        with self.assertRaises(ValidationError):
+            org.full_clean()
 
 
 class UserCanAccessOrganisationTests(TestCase):
@@ -53,26 +82,26 @@ class OrganisationMemberRequiredDecoratorTests(TestCase):
         self.other_user = User.objects.create_user(username="other", password="pw")
 
     def test_anonymous_redirected_to_login(self):
-        request = self.factory.get("/organisations/1/")
+        request = self.factory.get("/acme/")
         request.user = AnonymousUser()
 
-        response = _dummy_view(request, organisation_id=self.organisation.id)
+        response = _dummy_view(request, org_slug=self.organisation.slug)
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
 
     def test_non_member_gets_permission_denied(self):
-        request = self.factory.get("/organisations/1/")
+        request = self.factory.get("/acme/")
         request.user = self.other_user
 
         with self.assertRaises(PermissionDenied):
-            _dummy_view(request, organisation_id=self.organisation.id)
+            _dummy_view(request, org_slug=self.organisation.slug)
 
     def test_member_passes_through(self):
-        request = self.factory.get("/organisations/1/")
+        request = self.factory.get("/acme/")
         request.user = self.member
 
-        response = _dummy_view(request, organisation_id=self.organisation.id)
+        response = _dummy_view(request, org_slug=self.organisation.slug)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"ok")
@@ -112,6 +141,13 @@ class MyOrganisationsViewTests(TestCase):
         self.assertContains(response, "Acme")
         self.assertContains(response, "Other Co")
 
+    def test_links_use_organisation_slug(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("organisations:my_organisations"))
+
+        self.assertContains(response, f'href="/{self.organisation.slug}/"')
+
 
 class OrganisationDetailViewTests(TestCase):
     def setUp(self):
@@ -131,7 +167,7 @@ class OrganisationDetailViewTests(TestCase):
             name="Friday Lunch",
             deadline=timezone.now(),
         )
-        self.url = reverse("organisations:organisation_detail", args=[self.organisation.id])
+        self.url = reverse("organisations:organisation_detail", args=[self.organisation.slug])
 
     def test_anonymous_redirected_to_login(self):
         response = self.client.get(self.url)
@@ -145,6 +181,13 @@ class OrganisationDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 403)
+
+    def test_unknown_slug_returns_404(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("organisations:organisation_detail", args=["no-such-org"]))
+
+        self.assertEqual(response.status_code, 404)
 
     def test_member_can_view_dashboard(self):
         self.client.force_login(self.member)
@@ -161,14 +204,16 @@ class OrganisationDetailViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    def test_post_updates_organisation_name(self):
+    def test_post_updates_organisation_name_and_redirects_to_new_slug(self):
         self.client.force_login(self.member)
 
         response = self.client.post(self.url, {"name": "Acme Renamed"})
 
-        self.assertRedirects(response, self.url)
+        new_url = reverse("organisations:organisation_detail", args=["acme-renamed"])
+        self.assertRedirects(response, new_url)
         self.organisation.refresh_from_db()
         self.assertEqual(self.organisation.name, "Acme Renamed")
+        self.assertEqual(self.organisation.slug, "acme-renamed")
 
     def test_post_with_blank_name_shows_form_error_and_leaves_name_unchanged(self):
         self.client.force_login(self.member)

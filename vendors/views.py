@@ -9,11 +9,11 @@ from .forms import MenuItemForm, VendorForm
 from .models import MenuItem, Vendor
 
 
-def _get_org_vendor(organisation_id, vendor_id):
-    return get_object_or_404(Vendor, pk=vendor_id, organisation_id=organisation_id)
+def _get_org_vendor(org_slug, vendor_id):
+    return get_object_or_404(Vendor, pk=vendor_id, organisation__slug=org_slug)
 
 
-def _vendor_detail_context(vendor, organisation_id, vendor_form=None,
+def _vendor_detail_context(vendor, org_slug, vendor_form=None,
                             new_item_form=None, edited_item_id=None, edited_item_form=None):
     vendor_form = vendor_form or VendorForm(instance=vendor, organisation=vendor.organisation)
     new_item_form = new_item_form or MenuItemForm(vendor=vendor)
@@ -26,7 +26,7 @@ def _vendor_detail_context(vendor, organisation_id, vendor_form=None,
             item_forms.append((item, MenuItemForm(instance=item, vendor=vendor)))
 
     return {
-        'organisation_id': organisation_id,
+        'org_slug': org_slug,
         'vendor': vendor,
         'form': vendor_form,
         'item_forms': item_forms,
@@ -35,15 +35,15 @@ def _vendor_detail_context(vendor, organisation_id, vendor_form=None,
 
 
 @organisation_member_required
-def vendor_create(request, organisation_id):
-    organisation = get_object_or_404(Organisation, pk=organisation_id)
+def vendor_create(request, org_slug):
+    organisation = get_object_or_404(Organisation, slug=org_slug)
 
     if request.method == 'POST':
         form = VendorForm(request.POST, organisation=organisation)
         if form.is_valid():
             vendor = form.save()
             messages.success(request, f"Vendor '{vendor.name}' created.")
-            return redirect('organisations:vendor_detail', organisation_id=organisation.id, vendor_id=vendor.id)
+            return redirect('organisations:vendor_detail', org_slug=organisation.slug, vendor_id=vendor.id)
     else:
         form = VendorForm(organisation=organisation)
 
@@ -54,24 +54,24 @@ def vendor_create(request, organisation_id):
 
 
 @organisation_member_required
-def vendor_detail(request, organisation_id, vendor_id):
-    vendor = _get_org_vendor(organisation_id, vendor_id)
+def vendor_detail(request, org_slug, vendor_id):
+    vendor = _get_org_vendor(org_slug, vendor_id)
 
     if request.method == 'POST':
         form = VendorForm(request.POST, instance=vendor, organisation=vendor.organisation)
         if form.is_valid():
             form.save()
             messages.success(request, "Vendor updated.")
-            return redirect('organisations:vendor_detail', organisation_id=organisation_id, vendor_id=vendor.id)
+            return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor.id)
         return render(request, 'vendors/vendor_detail.html',
-                       _vendor_detail_context(vendor, organisation_id, vendor_form=form))
+                       _vendor_detail_context(vendor, org_slug, vendor_form=form))
 
-    return render(request, 'vendors/vendor_detail.html', _vendor_detail_context(vendor, organisation_id))
+    return render(request, 'vendors/vendor_detail.html', _vendor_detail_context(vendor, org_slug))
 
 
 @organisation_member_required
-def vendor_delete(request, organisation_id, vendor_id):
-    vendor = _get_org_vendor(organisation_id, vendor_id)
+def vendor_delete(request, org_slug, vendor_id):
+    vendor = _get_org_vendor(org_slug, vendor_id)
 
     if request.method == 'POST':
         try:
@@ -81,28 +81,28 @@ def vendor_delete(request, organisation_id, vendor_id):
         except ProtectedError:
             messages.error(request, "Can't delete this vendor — it still has events.")
 
-    return redirect('organisations:organisation_detail', organisation_id=organisation_id)
+    return redirect('organisations:organisation_detail', org_slug=org_slug)
 
 
 @organisation_member_required
-def menu_item_create(request, organisation_id, vendor_id):
-    vendor = _get_org_vendor(organisation_id, vendor_id)
+def menu_item_create(request, org_slug, vendor_id):
+    vendor = _get_org_vendor(org_slug, vendor_id)
 
     if request.method == 'POST':
         form = MenuItemForm(request.POST, vendor=vendor)
         if form.is_valid():
             form.save()
             messages.success(request, "Menu item added.")
-            return redirect('organisations:vendor_detail', organisation_id=organisation_id, vendor_id=vendor_id)
+            return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
         return render(request, 'vendors/vendor_detail.html',
-                       _vendor_detail_context(vendor, organisation_id, new_item_form=form))
+                       _vendor_detail_context(vendor, org_slug, new_item_form=form))
 
-    return redirect('organisations:vendor_detail', organisation_id=organisation_id, vendor_id=vendor_id)
+    return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
 
 
 @organisation_member_required
-def menu_item_edit(request, organisation_id, vendor_id, item_id):
-    vendor = _get_org_vendor(organisation_id, vendor_id)
+def menu_item_edit(request, org_slug, vendor_id, item_id):
+    vendor = _get_org_vendor(org_slug, vendor_id)
     item = get_object_or_404(MenuItem, pk=item_id, vendor=vendor)
 
     if request.method == 'POST':
@@ -110,17 +110,17 @@ def menu_item_edit(request, organisation_id, vendor_id, item_id):
         if form.is_valid():
             form.save()
             messages.success(request, "Menu item updated.")
-            return redirect('organisations:vendor_detail', organisation_id=organisation_id, vendor_id=vendor_id)
+            return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
         return render(request, 'vendors/vendor_detail.html', _vendor_detail_context(
-            vendor, organisation_id, edited_item_id=item.id, edited_item_form=form
+            vendor, org_slug, edited_item_id=item.id, edited_item_form=form
         ))
 
-    return redirect('organisations:vendor_detail', organisation_id=organisation_id, vendor_id=vendor_id)
+    return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
 
 
 @organisation_member_required
-def menu_item_delete(request, organisation_id, vendor_id, item_id):
-    vendor = _get_org_vendor(organisation_id, vendor_id)
+def menu_item_delete(request, org_slug, vendor_id, item_id):
+    vendor = _get_org_vendor(org_slug, vendor_id)
     item = get_object_or_404(MenuItem, pk=item_id, vendor=vendor)
 
     if request.method == 'POST':
@@ -131,4 +131,4 @@ def menu_item_delete(request, organisation_id, vendor_id, item_id):
         except ProtectedError:
             messages.error(request, "Can't delete this menu item — it still has orders.")
 
-    return redirect('organisations:vendor_detail', organisation_id=organisation_id, vendor_id=vendor_id)
+    return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
