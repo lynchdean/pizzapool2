@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import OrganisationForm
 from .models import Organisation, OrganisationMembership
-from .permissions import organisation_member_required
+from .permissions import organisation_member_required, user_can_access_organisation
 
 
 @login_required
@@ -27,14 +27,15 @@ def my_organisations(request):
     })
 
 
-@organisation_member_required
 def organisation_detail(request, org_slug):
     organisation = get_object_or_404(Organisation, slug=org_slug)
+    can_manage = user_can_access_organisation(request.user, organisation)
 
     return render(request, 'organisations/organisation_detail.html', {
         'organisation': organisation,
         'vendors': organisation.vendors.all(),
         'events': organisation.events.select_related('vendor').all(),
+        'can_manage': can_manage,
     })
 
 

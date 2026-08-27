@@ -3,11 +3,14 @@
 {% block content %}
 <h1>{{ organisation.name }}</h1>
 
+{% if can_manage %}
 <article>
   <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary outline">Edit organisation</a>
 </article>
+{% endif %}
 
 <div class="grid">
+  {% if can_manage %}
   <article>
     <header><strong>Vendors</strong></header>
     {% if vendors %}
@@ -23,6 +26,7 @@
       <a href="{% url 'organisations:vendor_create' organisation.slug %}" role="button" class="secondary">Add vendor</a>
     </footer>
   </article>
+  {% endif %}
 
   <article>
     <header><strong>Events</strong></header>
@@ -33,8 +37,10 @@
             {{ event.name }} — {{ event.vendor.name }} — {{ event.get_status_display }} — {{ event.deadline }}
             <fieldset role="group">
               <a href="{% url 'events:event_detail' organisation.slug event.id %}" role="button" class="outline">View</a>
-              <a href="{% url 'organisations:event_edit' organisation.slug event.id %}" role="button" class="outline">Edit</a>
-              <a href="{% url 'organisations:event_delete' organisation.slug event.id %}" role="button" class="outline secondary">Delete</a>
+              {% if can_manage %}
+                <a href="{% url 'organisations:event_edit' organisation.slug event.id %}" role="button" class="outline">Edit</a>
+                <a href="{% url 'organisations:event_delete' organisation.slug event.id %}" role="button" class="outline secondary">Delete</a>
+              {% endif %}
             </fieldset>
           </li>
         {% endfor %}
@@ -42,9 +48,11 @@
     {% else %}
       <p>No events yet.</p>
     {% endif %}
-    <footer>
-      <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary">Add event</a>
-    </footer>
+    {% if can_manage %}
+      <footer>
+        <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary">Add event</a>
+      </footer>
+    {% endif %}
   </article>
 </div>
 {% endblock %}

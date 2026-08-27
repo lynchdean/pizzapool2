@@ -169,18 +169,72 @@ class OrganisationDetailViewTests(TestCase):
         )
         self.url = reverse("organisations:organisation_detail", args=[self.organisation.slug])
 
-    def test_anonymous_redirected_to_login(self):
+    def test_anonymous_can_view_dashboard(self):
         response = self.client.get(self.url)
 
-        expected_url = f"{reverse('login')}?next={self.url}"
-        self.assertRedirects(response, expected_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Friday Lunch")
 
-    def test_non_member_gets_403(self):
+    def test_vendors_list_hidden_for_anonymous_visitors(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "<strong>Vendors</strong>")
+        self.assertNotContains(
+            response, reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
+        )
+
+    def test_vendors_list_hidden_for_non_members(self):
         self.client.force_login(self.other_user)
 
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, 403)
+        self.assertNotContains(response, "<strong>Vendors</strong>")
+
+    def test_vendors_list_shown_to_members(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "<strong>Vendors</strong>")
+        self.assertContains(
+            response, reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
+        )
+
+    def test_non_member_can_view_dashboard(self):
+        self.client.force_login(self.other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_edit_link_hidden_for_anonymous_visitors(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(
+            response, reverse("organisations:organisation_edit", args=[self.organisation.slug])
+        )
+
+    def test_edit_link_hidden_for_non_members(self):
+        self.client.force_login(self.other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(
+            response, reverse("organisations:organisation_edit", args=[self.organisation.slug])
+        )
+
+    def test_management_controls_hidden_for_anonymous_visitors(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Friday Lunch")
+        self.assertNotContains(response, "Add vendor")
+        self.assertNotContains(response, "Add event")
+        self.assertNotContains(
+            response, reverse("organisations:event_edit", args=[self.organisation.slug, self.event.id])
+        )
+        self.assertNotContains(
+            response, reverse("organisations:event_delete", args=[self.organisation.slug, self.event.id])
+        )
 
     def test_unknown_slug_returns_404(self):
         self.client.force_login(self.member)
