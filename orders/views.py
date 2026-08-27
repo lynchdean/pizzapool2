@@ -26,11 +26,15 @@ def claim_portions_view(request, event_id):
     # Collect quantity_<order_id> fields from the form
     requests = []
     for key, value in request.POST.items():
-        if key.startswith('quantity_') and value:
-            order_id = int(key.replace('quantity_', ''))
-            quantity = int(value)
-            if quantity > 0:
-                requests.append((order_id, quantity))
+        if not key.startswith('quantity_'):
+            continue
+        order_id_part = key[len('quantity_'):]
+        if not order_id_part.isdigit() or not value.isdigit():
+            continue
+        order_id = int(order_id_part)
+        quantity = int(value)
+        if quantity > 0:
+            requests.append((order_id, quantity))
 
     if not requests:
         messages.error(request, "Please select at least one portion.")

@@ -154,6 +154,53 @@ class ClaimPortionsViewTests(TestCase):
         self.assertContains(response, "This event is no longer open for claims")
 
 
+class ClaimPortionsMalformedInputTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        self.menu_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        self.event = Event.objects.create(
+            organisation=self.organisation,
+            vendor=self.vendor,
+            name="Friday Lunch",
+            deadline=timezone.now(),
+        )
+        self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+        self.url = reverse("orders:claim_portions", args=[self.event.id])
+
+    def test_malformed_quantity_value_is_ignored_not_500(self):
+        response = self.client.post(
+            self.url, {"claimant_name": "Alice", f"quantity_{self.order.id}": "abc"}, follow=True,
+        )
+
+        self.assertContains(response, "Please select at least one portion.")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
+    def test_malformed_order_id_in_key_is_ignored_not_500(self):
+        response = self.client.post(
+            self.url, {"claimant_name": "Alice", "quantity_abc": "2"}, follow=True,
+        )
+
+        self.assertContains(response, "Please select at least one portion.")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
+    def test_valid_quantity_still_claims_correctly(self):
+        response = self.client.post(
+            self.url, {"claimant_name": "Alice", f"quantity_{self.order.id}": "2"}, follow=True,
+        )
+
+        self.assertContains(response, "Claimed 2 portion(s)!")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name="Alice").count(), 2
+        )
+
+
 class StartOrderViewTests(TestCase):
     def setUp(self):
         self.organisation = Organisation.objects.create(name="Acme")

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}PizzaPool{% endblock %}</title>
+</head>
+<body>
+  <nav>
+    {% if user.is_authenticated %}
+      <a href="{% url 'organisations:my_organisations' %}">My organisations</a>
+      Logged in as {{ user.username }}
+      <form method="post" action="{% url 'logout' %}" style="display:inline">
+        {% csrf_token %}
+        <button type="submit">Log out</button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}">Log in</a>
+    {% endif %}
+  </nav>
+
+  {% if messages %}
+    <ul>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</body>
+</html>
