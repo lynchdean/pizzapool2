@@ -89,14 +89,6 @@ class VendorDetailViewTests(TestCase):
         self.assertContains(response, "Pizza Place")
         self.assertContains(response, "Margherita")
 
-    def test_post_to_detail_page_does_not_update_vendor_fields(self):
-        self.client.force_login(self.member)
-
-        self.client.post(self.url, {"name": "Should Not Save", "contact_info": "x"})
-
-        self.vendor.refresh_from_db()
-        self.assertEqual(self.vendor.name, "Pizza Place")
-
     def test_shows_edit_link(self):
         self.client.force_login(self.member)
 

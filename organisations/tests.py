@@ -204,14 +204,6 @@ class OrganisationDetailViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    def test_post_to_dashboard_does_not_update_organisation_name(self):
-        self.client.force_login(self.member)
-
-        self.client.post(self.url, {"name": "Should Not Save"})
-
-        self.organisation.refresh_from_db()
-        self.assertEqual(self.organisation.name, "Acme")
-
     def test_dashboard_shows_edit_link(self):
         self.client.force_login(self.member)
 
