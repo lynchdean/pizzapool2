@@ -4,7 +4,11 @@
 <h1>{{ organisation.name }}</h1>
 
 {% if can_manage %}
-  <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary outline">Edit organisation</a>
+  <div class="action-bar">
+    <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary outline">Edit organisation</a>
+    <a href="{% url 'organisations:vendor_create' organisation.slug %}" role="button" class="secondary">Add vendor</a>
+    <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary">Add event</a>
+  </div>
 {% endif %}
 
 <div class="grid">
@@ -20,9 +24,6 @@
     {% else %}
       <p>No vendors yet.</p>
     {% endif %}
-    <footer>
-      <a href="{% url 'organisations:vendor_create' organisation.slug %}" role="button" class="secondary">Add vendor</a>
-    </footer>
   </article>
   {% endif %}
 
@@ -44,11 +45,6 @@
       </ul>
     {% else %}
       <p>No events yet.</p>
-    {% endif %}
-    {% if can_manage %}
-      <footer>
-        <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary">Add event</a>
-      </footer>
     {% endif %}
   </article>
 </div>

@@ -7,7 +7,9 @@
 </hgroup>
 
 {% if can_manage %}
-<a href="{% url 'organisations:event_edit' event.organisation.slug event.public_id %}" role="button" class="secondary outline">Edit event</a>
+<div class="action-bar">
+  <a href="{% url 'organisations:event_edit' event.organisation.slug event.public_id %}" role="button" class="secondary outline">Edit event</a>
+</div>
 {% endif %}
 
 {% if order_summary %}
