@@ -39,7 +39,6 @@
               <a href="{% url 'events:event_detail' organisation.slug event.public_id %}" role="button" class="outline">View</a>
               {% if can_manage %}
                 <a href="{% url 'organisations:event_edit' organisation.slug event.public_id %}" role="button" class="outline">Edit</a>
-                <a href="{% url 'organisations:event_delete' organisation.slug event.public_id %}" role="button" class="outline secondary">Delete</a>
               {% endif %}
             </fieldset>
           </li>

@@ -8,12 +8,6 @@
 
   <a href="{% url 'organisations:vendor_edit' org_slug vendor.id %}" role="button" class="secondary outline">Edit vendor</a>
 
-  <form method="post" action="{% url 'organisations:vendor_delete' org_slug vendor.id %}"
-        onsubmit="return confirm('Delete this vendor?');">
-    {% csrf_token %}
-    <button type="submit" class="secondary outline">Delete vendor</button>
-  </form>
-
   <a href="{% url 'organisations:organisation_detail' org_slug %}">Back to organisation</a>
 </article>
 

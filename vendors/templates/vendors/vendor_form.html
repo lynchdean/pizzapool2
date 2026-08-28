@@ -15,4 +15,14 @@
     <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
   {% endif %}
 </article>
+
+{% if vendor %}
+<article>
+  <form method="post" action="{% url 'organisations:vendor_delete' organisation.slug vendor.id %}"
+        onsubmit="return confirm('Delete this vendor?');">
+    {% csrf_token %}
+    <button type="submit" class="secondary outline">Delete vendor</button>
+  </form>
+</article>
+{% endif %}
 {% endblock %}

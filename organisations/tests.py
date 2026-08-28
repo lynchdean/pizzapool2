@@ -268,9 +268,6 @@ class OrganisationDetailViewTests(TestCase):
         self.assertNotContains(
             response, reverse("organisations:event_edit", args=[self.organisation.slug, self.event.public_id])
         )
-        self.assertNotContains(
-            response, reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
-        )
 
     def test_unknown_slug_returns_404(self):
         self.client.force_login(self.member)
@@ -301,6 +298,16 @@ class OrganisationDetailViewTests(TestCase):
 
         self.assertContains(
             response, reverse("organisations:organisation_edit", args=[self.organisation.slug])
+        )
+
+    def test_dashboard_does_not_show_event_delete_link(self):
+        # Delete now lives on the event's own edit page, not the dashboard.
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(
+            response, reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
         )
 
 

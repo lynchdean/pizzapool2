@@ -15,4 +15,10 @@
     <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
   {% endif %}
 </article>
+
+{% if event %}
+<article>
+  <a href="{% url 'organisations:event_delete' organisation.slug event.public_id %}" role="button" class="secondary outline">Delete event</a>
+</article>
+{% endif %}
 {% endblock %}

@@ -119,6 +119,13 @@ class EventEditViewTests(TestCase):
             response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
         )
 
+    def test_delete_link_shown_on_edit_page(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(
+            response, reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
+        )
+
     def test_vendor_field_ignored_when_event_has_orders(self):
         Order.objects.create(event=self.event, menu_item=self.item)
 

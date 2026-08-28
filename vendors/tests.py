@@ -99,6 +99,17 @@ class VendorDetailViewTests(TestCase):
             reverse("organisations:vendor_edit", args=[self.organisation.slug, self.vendor.id]),
         )
 
+    def test_does_not_show_delete_link(self):
+        # Delete now lives on the vendor's own edit page, not here.
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(
+            response,
+            reverse("organisations:vendor_delete", args=[self.organisation.slug, self.vendor.id]),
+        )
+
     def test_vendor_belonging_to_other_organisation_returns_404(self):
         # Member of BOTH orgs, so the outer organisation_member_required check
         # passes: this isolates the inner IDOR-scoped lookup in the view.
@@ -150,6 +161,16 @@ class VendorEditViewTests(TestCase):
         self.assertRedirects(response, detail_url)
         self.vendor.refresh_from_db()
         self.assertEqual(self.vendor.name, "Pizza Place Renamed")
+
+    def test_shows_delete_link(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(
+            response,
+            reverse("organisations:vendor_delete", args=[self.organisation.slug, self.vendor.id]),
+        )
 
 
 class VendorDeleteViewTests(TestCase):
