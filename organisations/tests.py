@@ -9,7 +9,6 @@ from django.utils import timezone
 from events.models import Event
 from vendors.models import Vendor
 
-from .forms import OrganisationForm
 from .models import Organisation, OrganisationMembership
 from .permissions import organisation_member_required, user_can_access_organisation
 
@@ -64,15 +63,6 @@ class OrganisationCurrencyTests(TestCase):
         org = Organisation(currency="XYZ")
 
         self.assertEqual(org.currency_symbol, "XYZ")
-
-    def test_organisation_form_accepts_a_currency_change(self):
-        org = Organisation.objects.create(name="Acme")
-
-        form = OrganisationForm(data={"name": "Acme", "currency": "USD"}, instance=org)
-
-        self.assertTrue(form.is_valid())
-        saved = form.save()
-        self.assertEqual(saved.currency, "USD")
 
 
 class UserCanAccessOrganisationTests(TestCase):

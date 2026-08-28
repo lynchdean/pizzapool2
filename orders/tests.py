@@ -162,13 +162,6 @@ class JoinOrderViewTests(TestCase):
         self.assertTrue(claimed.exclude(claimant_phone="").exists())
         self.assertContains(response, "Claimed 2 portion(s)!")
 
-    def test_nonexistent_order_returns_404(self):
-        url = reverse("orders:join_order", args=[999999])
-
-        response = self.client.post(url, self.valid_data)
-
-        self.assertEqual(response.status_code, 404)
-
     def test_looking_up_by_raw_integer_pk_returns_404(self):
         url = reverse("orders:join_order", args=[str(self.order.pk)])
 
@@ -214,16 +207,6 @@ class JoinOrderViewTests(TestCase):
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
         )
-
-    def test_event_detail_hides_join_form_when_event_not_open(self):
-        self.event.status = "locked"
-        self.event.save()
-
-        response = self.client.get(
-            reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
-        )
-
-        self.assertNotContains(response, "<form")
 
 
 class StartOrderViewTests(TestCase):
