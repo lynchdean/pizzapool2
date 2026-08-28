@@ -37,7 +37,7 @@ SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
 
 # SECURE_SSL_REDIRECT, unlike the cookie flags above, actively 301-redirects
-# every non-HTTPS request — including in-process requests like the Django
+# every non-HTTPS request, including in-process requests like the Django
 # test client's and any CI run with DEBUG=False, which aren't going through
 # real TLS termination. It only makes sense once a reverse proxy is actually
 # terminating HTTPS in front of this app, so it stays opt-in (default False)
@@ -51,7 +51,7 @@ SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # security.W008 (SECURE_SSL_REDIRECT) and W004 (SECURE_HSTS_SECONDS) are
-# deliberately deferred until a domain and working HTTPS actually exist —
+# deliberately deferred until a domain and working HTTPS actually exist:
 # enabling either before then breaks plain-HTTP testing/CI for no benefit.
 SILENCED_SYSTEM_CHECKS = ['security.W004', 'security.W008']
 
@@ -159,7 +159,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # The manifest storage requires collectstatic to have already run (it errors
 # on any {% static %} reference missing from the manifest), so it's only used
-# once DEBUG is off — dev/test keep Django's plain static storage, unchanged.
+# once DEBUG is off. Dev/test keep Django's plain static storage, unchanged.
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
@@ -181,7 +181,7 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'organisations:my_organisations'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Email — console backend by default so password-reset emails are visible
+# Email: console backend by default so password-reset emails are visible
 # during local dev with zero setup. Point EMAIL_BACKEND/EMAIL_HOST/etc at a
 # real SMTP provider via env vars once one is chosen for the eventual host.
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
@@ -192,7 +192,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@pizzapool.local')
 
-# Plain stdout logging — works under docker logs, systemd/journald, or any
+# Plain stdout logging: works under docker logs, systemd/journald, or any
 # PaaS log stream without further config.
 LOGGING = {
     'version': 1,

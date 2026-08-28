@@ -101,7 +101,7 @@ class VendorDetailViewTests(TestCase):
 
     def test_vendor_belonging_to_other_organisation_returns_404(self):
         # Member of BOTH orgs, so the outer organisation_member_required check
-        # passes — this isolates the inner IDOR-scoped lookup in the view.
+        # passes: this isolates the inner IDOR-scoped lookup in the view.
         OrganisationMembership.objects.create(
             user=self.member, organisation=self.other_organisation, role="owner"
         )

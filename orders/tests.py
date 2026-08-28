@@ -224,7 +224,6 @@ class JoinOrderViewTests(TestCase):
         )
 
         self.assertNotContains(response, "<form")
-        self.assertContains(response, "This event is no longer open for claims")
 
 
 class StartOrderViewTests(TestCase):
@@ -312,9 +311,9 @@ class StartOrderViewTests(TestCase):
         self.assertFalse(Order.objects.filter(event=self.event).exists())
 
     def test_anonymous_user_can_start_order(self):
-        # Deliberate: starting an order is public, same as claiming portions —
-        # do not add a login requirement here without revisiting that decision.
-        # No force_login() call in this test — the client is anonymous.
+        # Deliberate: starting an order is public, same as claiming portions.
+        # Do not add a login requirement here without revisiting that decision.
+        # No force_login() call in this test: the client is anonymous.
         response = self.client.post(self.url, self.valid_data)
 
         order = Order.objects.filter(event=self.event, menu_item=self.menu_item).first()

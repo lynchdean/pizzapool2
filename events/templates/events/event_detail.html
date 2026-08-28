@@ -6,34 +6,57 @@
   <p>{{ event.vendor.name }} · {{ event.get_status_display }} · Deadline {{ event.deadline }}</p>
 </hgroup>
 
-{% if event.status == 'open' %}
+{% if can_manage %}
+<a href="{% url 'organisations:event_edit' event.organisation.slug event.public_id %}" role="button" class="secondary outline">Edit event</a>
+{% endif %}
+
+{% if order_summary %}
+<article>
+  <header><strong>Order summary</strong></header>
+  <ul>
+    {% for item in order_summary %}
+      <li>{{ item.name }} × {{ item.count }}: {{ event.organisation.currency_symbol }}{{ item.subtotal }}</li>
+    {% endfor %}
+  </ul>
+  <p><strong>Total: {{ event.organisation.currency_symbol }}{{ order_total }}</strong></p>
+</article>
+{% endif %}
+
+{% if is_finalized %}
+<article>
+  <p>This event is no longer open for claims (status: {{ event.get_status_display }}).</p>
+</article>
+{% endif %}
+
 <div id="live-content"
+     {% if event.status == 'open' %}
      hx-get="{{ request.path }}"
      hx-trigger="every 15s [document.activeElement.tagName!='INPUT' && document.activeElement.tagName!='SELECT']"
      hx-select="#live-content"
      hx-target="#live-content"
-     hx-swap="outerHTML">
+     hx-swap="outerHTML"
+     {% endif %}>
   {% for order in orders %}
   <article>
     <header>
       <strong>{{ order.menu_item.name }}</strong>
-      {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %} —
+      {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %} ·
       {% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}
-      {% if order.is_fully_claimed %} (Full){% endif %}
+      ({{ order.status_label }})
     </header>
 
     {% if order.claimants %}
       <ul>
         {% for claimant in order.claimants %}
           <li>
-            {{ claimant.name }} — {{ claimant.quantity }} portion{{ claimant.quantity|pluralize }}
+            {{ claimant.name }}: {{ claimant.quantity }} portion{{ claimant.quantity|pluralize }}
             {% if claimant.phone %} ({{ claimant.phone }}){% endif %}
           </li>
         {% endfor %}
       </ul>
     {% endif %}
 
-    {% if order.available_count > 0 %}
+    {% if event.status == 'open' and order.available_count > 0 %}
       <form method="post" action="{% url 'orders:join_order' order.public_id %}">
         {% csrf_token %}
         <fieldset role="group">
@@ -53,7 +76,7 @@
     <p>No orders yet.</p>
   {% endfor %}
 
-  {% if active_menu_items %}
+  {% if event.status == 'open' and active_menu_items %}
   <article>
     <header><strong>Start a new order</strong></header>
     <form method="post" action="{% url 'orders:start_order' event.public_id %}">
@@ -76,10 +99,4 @@
   </article>
   {% endif %}
 </div>
-
-{% else %}
-<article>
-  <p>This event is no longer open for claims (status: {{ event.get_status_display }}).</p>
-</article>
-{% endif %}
 {% endblock %}

@@ -106,11 +106,18 @@ class EventEditViewTests(TestCase):
         })
 
         self.assertRedirects(
-            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
         )
         self.event.refresh_from_db()
         self.assertEqual(self.event.name, "Friday Lunch (updated)")
         self.assertEqual(self.event.status, "locked")
+
+    def test_cancel_link_points_to_event_detail(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+        )
 
     def test_vendor_field_ignored_when_event_has_orders(self):
         Order.objects.create(event=self.event, menu_item=self.item)
@@ -257,6 +264,43 @@ class EventDetailViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_edit_link_hidden_for_anonymous_visitors(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Edit event")
+
+    def test_edit_link_hidden_for_non_members(self):
+        other_user = User.objects.create_user(username="other", password="pw")
+        self.client.force_login(other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Edit event")
+
+    def test_edit_link_shown_to_members(self):
+        member = User.objects.create_user(username="member", password="pw")
+        OrganisationMembership.objects.create(
+            user=member, organisation=self.organisation, role="organiser"
+        )
+        self.client.force_login(member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Edit event")
+        self.assertContains(
+            response, reverse("organisations:event_edit", args=[self.organisation.slug, self.event.public_id])
+        )
+
+    def test_edit_link_shown_to_superuser(self):
+        superuser = User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="pw"
+        )
+        self.client.force_login(superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Edit event")
+
     def test_looking_up_by_raw_integer_pk_returns_404(self):
         url = reverse("events:event_detail", args=[self.organisation.slug, str(self.event.pk)])
 
@@ -280,6 +324,34 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertNotContains(response, "hx-trigger")
+
+    def test_order_details_still_visible_when_locked(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Margherita")
+        self.assertContains(response, "Alice")
+        self.assertContains(response, "1 portion")
+
+    def test_join_and_start_forms_hidden_when_not_open(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Join (")
+        self.assertNotContains(response, "Start a new order")
 
     def test_menu_item_with_no_orders_offers_start_section(self):
         MenuItem.objects.create(
@@ -414,8 +486,79 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Full")
+        self.assertContains(response, "Confirmed")
         self.assertNotContains(response, "Join (")
+
+    def test_partially_claimed_order_shows_incomplete_while_open(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "(Incomplete)")
+        self.assertNotContains(response, "will not proceed")
+
+    def test_partially_claimed_order_still_shows_plain_incomplete_when_locked(self):
+        # 'locked' isn't necessarily "closed" — it may be used to prep an
+        # event before it opens — so it shouldn't claim a partial order is
+        # doomed the way 'submitted'/'completed' can.
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "(Incomplete)")
+        self.assertNotContains(response, "will not proceed")
+
+    def test_partially_claimed_order_shows_will_not_proceed_once_submitted(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "submitted"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Incomplete, will not proceed")
+
+    def test_no_longer_open_message_absent_when_locked(self):
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "no longer open for claims")
+
+    def test_no_longer_open_message_shown_when_submitted(self):
+        self.event.status = "submitted"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "no longer open for claims")
+
+    def test_fully_claimed_order_says_confirmed_even_when_locked(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Confirmed")
 
     def test_orders_shown_in_creation_order_not_grouped_by_menu_item(self):
         # Names deliberately chosen so alphabetical-by-item-name order (the
@@ -448,6 +591,83 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertNotContains(response, "Discontinued Pizza")
+
+
+class EventOrderSummaryTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        # portions_per_unit=1 so a single claim fully claims the order.
+        self.margherita = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        # portions_per_unit=2 so it can be left partially claimed.
+        self.pepperoni = MenuItem.objects.create(
+            vendor=self.vendor, name="Pepperoni", portions_per_unit=2, price="12.00"
+        )
+        self.event = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
+            deadline=timezone.now(),
+        )
+        full_order_1 = Order.objects.create(event=self.event, menu_item=self.margherita)
+        full_order_2 = Order.objects.create(event=self.event, menu_item=self.margherita)
+        claim_portions_by_quantity(self.event, [(full_order_1.id, 1)], "Alice", "0871234567")
+        claim_portions_by_quantity(self.event, [(full_order_2.id, 1)], "Bob", "0871234568")
+        self.partial_order = Order.objects.create(event=self.event, menu_item=self.pepperoni)
+        claim_portions_by_quantity(self.event, [(self.partial_order.id, 1)], "Carol", "0871234569")
+        self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+
+    def test_summary_only_counts_fully_claimed_orders(self):
+        self.event.status = "submitted"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Order summary")
+        self.assertContains(response, "Margherita × 2: €20.00")
+        self.assertNotContains(response, "Pepperoni × ")
+        self.assertContains(response, "Total: €20.00")
+
+    def test_summary_shown_when_completed(self):
+        self.event.status = "completed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Order summary")
+        self.assertContains(response, "Total: €20.00")
+
+    def test_summary_absent_when_open(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Order summary")
+
+    def test_summary_absent_when_locked(self):
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Order summary")
+
+    def test_summary_absent_when_submitted_with_no_orders(self):
+        self.event.status = "submitted"
+        self.event.save()
+        Order.objects.filter(event=self.event).delete()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Order summary")
+        self.assertContains(response, "no longer open for claims")
+
+    def test_summary_absent_when_submitted_with_only_partial_orders(self):
+        self.event.status = "submitted"
+        self.event.save()
+        Order.objects.filter(event=self.event).exclude(pk=self.partial_order.pk).delete()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Order summary")
 
 
 class EventPublicIdTests(TestCase):

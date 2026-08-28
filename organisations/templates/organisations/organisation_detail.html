@@ -34,7 +34,7 @@
       <ul>
         {% for event in events %}
           <li>
-            {{ event.name }} — {{ event.vendor.name }} — {{ event.get_status_display }} — {{ event.deadline }}
+            {{ event.name }} · {{ event.vendor.name }} · {{ event.get_status_display }} · {{ event.deadline }}
             <fieldset role="group">
               <a href="{% url 'events:event_detail' organisation.slug event.public_id %}" role="button" class="outline">View</a>
               {% if can_manage %}

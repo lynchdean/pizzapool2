@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from orders.models import Order, Portion
 from organisations.models import Organisation
-from organisations.permissions import organisation_member_required
+from organisations.permissions import organisation_member_required, user_can_access_organisation
 
 from .forms import EventForm
 from .models import Event
@@ -26,6 +26,11 @@ def event_detail(request, org_slug, event_id):
 
     portion_qs = Portion.objects.filter(claimant_name__isnull=False).order_by('claimed_at', 'id')
 
+    # 'locked' isn't necessarily "closed" — it can also be used to prep an
+    # event before it opens, so only 'submitted'/'completed' are treated as
+    # genuinely final (no more claims coming, and orders/portions locked in).
+    is_finalized = event.status in ('submitted', 'completed')
+
     orders = (
         Order.objects.filter(event=event)
         .select_related('menu_item')
@@ -36,6 +41,15 @@ def event_detail(request, org_slug, event_id):
     for order in orders:
         order.available_range = range(1, order.available_count + 1)
         order.is_fully_claimed = order.available_count == 0
+
+        # A full order is guaranteed to proceed regardless of event status. A
+        # partial order's fate is only decided once the event is finalized.
+        if order.is_fully_claimed:
+            order.status_label = "Confirmed"
+        elif is_finalized:
+            order.status_label = "Incomplete, will not proceed"
+        else:
+            order.status_label = "Incomplete"
 
         claimants = {}
         for portion in order.claimed_portions:
@@ -58,10 +72,34 @@ def event_detail(request, org_slug, event_id):
 
     active_menu_items = list(event.vendor.menu_items.filter(is_active=True).order_by('name'))
 
+    order_summary = None
+    order_total = None
+    if is_finalized:
+        summary_by_item = {}
+        for order in orders:
+            # Only fully-claimed orders are confirmed purchases. A partially
+            # claimed order's remaining portions may never actually get claimed.
+            if not order.is_fully_claimed:
+                continue
+            item = order.menu_item
+            entry = summary_by_item.setdefault(item.id, {
+                'name': item.name, 'count': 0, 'subtotal': Decimal('0.00'),
+            })
+            entry['count'] += 1
+            entry['subtotal'] += item.price
+        order_summary = sorted(summary_by_item.values(), key=lambda e: e['name'])
+        order_total = sum((e['subtotal'] for e in order_summary), Decimal('0.00'))
+
+    can_manage = user_can_access_organisation(request.user, event.organisation)
+
     return render(request, 'events/event_detail.html', {
         'event': event,
         'orders': orders,
         'active_menu_items': active_menu_items,
+        'order_summary': order_summary,
+        'order_total': order_total,
+        'can_manage': can_manage,
+        'is_finalized': is_finalized,
     })
 
 
@@ -93,7 +131,7 @@ def event_edit(request, org_slug, event_id):
         if form.is_valid():
             form.save()
             messages.success(request, "Event updated.")
-            return redirect('organisations:organisation_detail', org_slug=org_slug)
+            return redirect('events:event_detail', org_slug=org_slug, event_id=event.public_id)
     else:
         form = EventForm(instance=event, organisation=event.organisation)
 
@@ -117,7 +155,7 @@ def event_delete(request, org_slug, event_id):
             return redirect('organisations:organisation_detail', org_slug=org_slug)
         except EventHasClaimedPortionsError as e:
             claimed_count = e.claimed_count
-            messages.error(request, f"Can't delete — {claimed_count} portion(s) have already been claimed.")
+            messages.error(request, f"Can't delete: {claimed_count} portion(s) have already been claimed.")
 
     return render(request, 'events/event_confirm_delete.html', {
         'event': event,

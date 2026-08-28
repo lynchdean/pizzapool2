@@ -9,6 +9,10 @@
     {{ form.as_p }}
     <button type="submit">Save</button>
   </form>
-  <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+  {% if event %}
+    <a href="{% url 'events:event_detail' organisation.slug event.public_id %}">Cancel</a>
+  {% else %}
+    <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+  {% endif %}
 </article>
 {% endblock %}

@@ -88,7 +88,7 @@ def vendor_delete(request, org_slug, vendor_id):
             vendor.delete()
             messages.success(request, f"Vendor '{name}' deleted.")
         except ProtectedError:
-            messages.error(request, "Can't delete this vendor — it still has events.")
+            messages.error(request, "Can't delete this vendor: it still has events.")
 
     return redirect('organisations:organisation_detail', org_slug=org_slug)
 
@@ -138,6 +138,6 @@ def menu_item_delete(request, org_slug, vendor_id, item_id):
             item.delete()
             messages.success(request, f"Menu item '{name}' deleted.")
         except ProtectedError:
-            messages.error(request, "Can't delete this menu item — it still has orders.")
+            messages.error(request, "Can't delete this menu item: it still has orders.")
 
     return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
