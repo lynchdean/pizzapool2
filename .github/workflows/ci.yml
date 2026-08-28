@@ -24,7 +24,7 @@ jobs:
           --health-retries 5
 
     env:
-      SECRET_KEY: ci-test-secret-key
+      SECRET_KEY: qisBdMktO_maLTUedQPnWaaXwnMd9b9MetDch8wUqxCQfE5rG8D9MJSNvBEEUAAvRjg
       DEBUG: "False"
       ALLOWED_HOSTS: "testserver"
       DB_NAME: pizzapool_test
