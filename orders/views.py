@@ -1,4 +1,5 @@
 # orders/views.py
+from django.core.cache import cache
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from events.models import Event
@@ -19,6 +20,22 @@ def _flash_form_errors(request, form):
             messages.error(request, error)
 
 
+def _is_rate_limited(request, action, limit=10, period=60):
+    # REMOTE_ADDR is correct for direct connections; if this ends up behind
+    # a reverse proxy later, that proxy needs to be configured to pass a
+    # trustworthy client IP (e.g. X-Forwarded-For) for this to stay accurate.
+    ip = request.META.get('REMOTE_ADDR', 'unknown')
+    cache_key = f'ratelimit:{action}:{ip}'
+    if cache.add(cache_key, 1, timeout=period):
+        return False
+    try:
+        count = cache.incr(cache_key)
+    except ValueError:
+        cache.set(cache_key, 1, timeout=period)
+        return False
+    return count > limit
+
+
 def join_order_view(request, order_id):
     order = get_object_or_404(
         Order.objects.select_related('event', 'event__organisation'), public_id=order_id
@@ -26,6 +43,10 @@ def join_order_view(request, order_id):
     event = order.event
 
     if request.method != 'POST':
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
+
+    if _is_rate_limited(request, 'join_order'):
+        messages.error(request, "Too many attempts. Please wait a moment and try again.")
         return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
     max_quantity = order.portions.filter(claimant_name__isnull=True).count()
@@ -55,6 +76,10 @@ def start_order_view(request, event_id):
     event = get_object_or_404(Event.objects.select_related('organisation'), public_id=event_id)
 
     if request.method != 'POST':
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+
+    if _is_rate_limited(request, 'start_order'):
+        messages.error(request, "Too many attempts. Please wait a moment and try again.")
         return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
     menu_item_id = request.POST.get('menu_item_id', '')

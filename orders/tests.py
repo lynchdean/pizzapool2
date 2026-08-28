@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -208,6 +208,33 @@ class JoinOrderViewTests(TestCase):
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
         )
 
+    def test_exceeding_rate_limit_blocks_further_attempts(self):
+        data = {**self.valid_data}
+        del data["claimant_phone"]  # invalid but cheap: no DB writes per request
+
+        for _ in range(10):
+            response = self.client.post(self.url, data, follow=True)
+            self.assertNotContains(response, "Too many attempts")
+
+        response = self.client.post(self.url, data, follow=True)
+
+        self.assertContains(response, "Too many attempts")
+
+    def test_rate_limit_is_tracked_per_ip_not_globally(self):
+        data = {**self.valid_data}
+        del data["claimant_phone"]
+
+        for _ in range(11):
+            self.client.post(self.url, data, REMOTE_ADDR="1.1.1.1")
+
+        # A fresh Client, not just a different REMOTE_ADDR on the same one,
+        # so this doesn't pick up unconsumed flash messages left over from
+        # the redirect-only (no follow=True) requests above.
+        other_visitor = Client()
+        response = other_visitor.post(self.url, data, REMOTE_ADDR="2.2.2.2", follow=True)
+
+        self.assertNotContains(response, "Too many attempts")
+
 
 class StartOrderViewTests(TestCase):
     def setUp(self):
@@ -274,6 +301,31 @@ class StartOrderViewTests(TestCase):
 
         self.assertContains(response, "This event is no longer open for new orders.")
         self.assertFalse(Order.objects.filter(event=self.event).exists())
+
+    def test_exceeding_rate_limit_blocks_further_attempts(self):
+        data = {**self.valid_data, "menu_item_id": "not-a-number"}  # invalid but cheap
+
+        for _ in range(10):
+            response = self.client.post(self.url, data, follow=True)
+            self.assertNotContains(response, "Too many attempts")
+
+        response = self.client.post(self.url, data, follow=True)
+
+        self.assertContains(response, "Too many attempts")
+
+    def test_rate_limit_is_tracked_per_ip_not_globally(self):
+        data = {**self.valid_data, "menu_item_id": "not-a-number"}
+
+        for _ in range(11):
+            self.client.post(self.url, data, REMOTE_ADDR="1.1.1.1")
+
+        # A fresh Client, not just a different REMOTE_ADDR on the same one,
+        # so this doesn't pick up unconsumed flash messages left over from
+        # the redirect-only (no follow=True) requests above.
+        other_visitor = Client()
+        response = other_visitor.post(self.url, data, REMOTE_ADDR="2.2.2.2", follow=True)
+
+        self.assertNotContains(response, "Too many attempts")
 
     def test_post_rejects_quantity_exceeding_portions_per_unit(self):
         data = {**self.valid_data, "quantity": self.menu_item.portions_per_unit + 1}

@@ -137,6 +137,17 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# DB-backed rather than the default per-process cache so counters (e.g. the
+# rate limiter in orders/views.py) stay correct across multiple gunicorn
+# workers, with no extra infrastructure (Redis etc.) required. The table is
+# created by organisations/migrations/0004_create_cache_table.py.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table',
+    }
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
