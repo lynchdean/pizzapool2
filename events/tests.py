@@ -465,6 +465,34 @@ class EventDetailViewTests(TestCase):
         self.assertContains(response, "1 portion")
         self.assertContains(response, "+353871234567")
 
+    def test_cancel_control_shown_for_claimant_while_open(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "+353871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(
+            response, reverse("orders:unclaim_portion", args=[order.public_id])
+        )
+
+    def test_cancel_control_hidden_once_not_open(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "+353871234567")
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(
+            response, reverse("orders:unclaim_portion", args=[order.public_id])
+        )
+
     def test_repeat_claims_by_same_person_grouped_into_one_roster_line(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"

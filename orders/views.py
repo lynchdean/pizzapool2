@@ -4,11 +4,13 @@ from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from events.models import Event
 from vendors.models import MenuItem
-from .forms import JoinOrderForm, StartOrderForm
+from .forms import JoinOrderForm, StartOrderForm, UnclaimForm
 from .models import Order
 from .services import (
     claim_portions_by_quantity,
     start_order_and_claim,
+    unclaim_portions,
+    ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
 )
@@ -68,6 +70,35 @@ def join_order_view(request, order_id):
         messages.error(request, "This event is no longer open for claims.")
     except NotEnoughPortionsError:
         messages.error(request, "Sorry, someone else just claimed those. Please try again.")
+
+    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
+
+
+def unclaim_portion_view(request, order_id):
+    order = get_object_or_404(
+        Order.objects.select_related('event', 'event__organisation'), public_id=order_id
+    )
+    event = order.event
+
+    if request.method != 'POST':
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
+
+    if _is_rate_limited(request, 'unclaim_portion'):
+        messages.error(request, "Too many attempts. Please wait a moment and try again.")
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
+
+    form = UnclaimForm(request.POST)
+    if not form.is_valid():
+        _flash_form_errors(request, form)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
+
+    try:
+        count = unclaim_portions(event, order.id, form.cleaned_data['claimant_phone'])
+        messages.success(request, f"Cancelled {count} portion(s).")
+    except EventNotOpenError:
+        messages.error(request, "This event is no longer open, so claims can't be cancelled.")
+    except ClaimNotFoundError:
+        messages.error(request, "We couldn't find a claim matching that phone number on this order.")
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 

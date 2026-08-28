@@ -10,6 +10,8 @@ from .models import Order, Portion
 from .services import (
     claim_portions_by_quantity,
     create_order,
+    unclaim_portions,
+    ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
 )
@@ -230,6 +232,98 @@ class JoinOrderViewTests(TestCase):
         # A fresh Client, not just a different REMOTE_ADDR on the same one,
         # so this doesn't pick up unconsumed flash messages left over from
         # the redirect-only (no follow=True) requests above.
+        other_visitor = Client()
+        response = other_visitor.post(self.url, data, REMOTE_ADDR="2.2.2.2", follow=True)
+
+        self.assertNotContains(response, "Too many attempts")
+
+
+class UnclaimPortionViewTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        self.menu_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        self.event = Event.objects.create(
+            organisation=self.organisation,
+            vendor=self.vendor,
+            name="Friday Lunch",
+            deadline=timezone.now(),
+        )
+        self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+        claim_portions_by_quantity(self.event, [(self.order.id, 2)], "Bob", "+353871234567")
+        self.url = reverse("orders:unclaim_portion", args=[self.order.public_id])
+
+    def test_get_redirects_without_unclaiming(self):
+        response = self.client.get(self.url)
+
+        self.assertRedirects(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+        )
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 2
+        )
+
+    def test_post_with_correct_phone_releases_the_claim(self):
+        response = self.client.post(
+            self.url, {"claimant_phone": "+353871234567"}, follow=True
+        )
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+        self.assertContains(response, "Cancelled 2 portion(s).")
+
+    def test_post_with_wrong_phone_changes_nothing(self):
+        response = self.client.post(
+            self.url, {"claimant_phone": "+353879999999"}, follow=True
+        )
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 2
+        )
+        self.assertContains(response, "find a claim matching that phone number")
+
+    def test_unclaiming_one_claimant_does_not_affect_another(self):
+        claim_portions_by_quantity(self.event, [(self.order.id, 1)], "Carol", "+353871111111")
+
+        self.client.post(self.url, {"claimant_phone": "+353871234567"})
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name="Carol").count(), 1
+        )
+
+    def test_blocked_and_unchanged_when_event_not_open(self):
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.post(
+            self.url, {"claimant_phone": "+353871234567"}, follow=True
+        )
+
+        self.assertContains(response, "no longer open, so claims")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 2
+        )
+
+    def test_exceeding_rate_limit_blocks_further_attempts(self):
+        data = {"claimant_phone": "+353879999999"}  # wrong number: fast, no side effects
+
+        for _ in range(10):
+            response = self.client.post(self.url, data, follow=True)
+            self.assertNotContains(response, "Too many attempts")
+
+        response = self.client.post(self.url, data, follow=True)
+
+        self.assertContains(response, "Too many attempts")
+
+    def test_rate_limit_is_tracked_per_ip_not_globally(self):
+        data = {"claimant_phone": "+353879999999"}
+
+        for _ in range(11):
+            self.client.post(self.url, data, REMOTE_ADDR="1.1.1.1")
+
         other_visitor = Client()
         response = other_visitor.post(self.url, data, REMOTE_ADDR="2.2.2.2", follow=True)
 

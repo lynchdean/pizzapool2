@@ -28,6 +28,12 @@ class EventNotOpenError(Exception):
         super().__init__(f"Event {event_id} is not open (status={status})")
 
 
+class ClaimNotFoundError(Exception):
+    def __init__(self, order_id):
+        self.order_id = order_id
+        super().__init__(f"No claimed portions found on order {order_id} for that phone number")
+
+
 def claim_portions_by_quantity(event, requests, claimant_name, claimant_phone=None):
     """
     event: the Event the given order_ids are expected to belong to. Re-fetched
@@ -97,3 +103,32 @@ def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_ph
         )
 
     return order, claimed
+
+
+def unclaim_portions(event, order_id, claimant_phone):
+    """
+    Releases every portion on order_id claimed under claimant_phone, freeing
+    them up for someone else to claim. Matches purely on phone number (per
+    product decision) — if multiple different names share one phone on the
+    same order, this releases all of them together.
+    """
+    with transaction.atomic():
+        locked_event = Event.objects.select_for_update().get(pk=event.pk)
+        if locked_event.status != "open":
+            raise EventNotOpenError(locked_event.pk, locked_event.status)
+
+        portions = list(
+            Portion.objects
+            .select_for_update()
+            .filter(order_id=order_id, order__event=locked_event, claimant_phone=claimant_phone)
+        )
+        if not portions:
+            raise ClaimNotFoundError(order_id)
+
+        for portion in portions:
+            portion.claimant_name = None
+            portion.claimant_phone = None
+            portion.claimed_at = None
+            portion.save()
+
+    return len(portions)

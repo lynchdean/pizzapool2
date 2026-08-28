@@ -51,6 +51,18 @@
           <li>
             {{ claimant.name }}: {{ claimant.quantity }} portion{{ claimant.quantity|pluralize }}
             {% if claimant.phone %} ({{ claimant.phone }}){% endif %}
+            {% if event.status == 'open' %}
+              <details>
+                <summary>Cancel</summary>
+                <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}">
+                  {% csrf_token %}
+                  <fieldset role="group">
+                    <input type="tel" name="claimant_phone" placeholder="Confirm your phone number" required>
+                    <button type="submit">Confirm cancel</button>
+                  </fieldset>
+                </form>
+              </details>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

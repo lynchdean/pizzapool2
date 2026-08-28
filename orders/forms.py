@@ -24,3 +24,7 @@ class JoinOrderForm(_ClaimFieldsMixin):
 
 class StartOrderForm(_ClaimFieldsMixin):
     pass
+
+
+class UnclaimForm(forms.Form):
+    claimant_phone = PhoneNumberField(label="Phone number")
