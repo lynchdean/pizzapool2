@@ -16,7 +16,8 @@
   {% for order in orders %}
   <article>
     <header>
-      <strong>{{ order.menu_item.name }}</strong> —
+      <strong>{{ order.menu_item.name }}</strong>
+      {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %} —
       {% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}
       {% if order.is_fully_claimed %} (Full){% endif %}
     </header>

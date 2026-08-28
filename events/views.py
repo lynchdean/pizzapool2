@@ -1,3 +1,5 @@
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -46,6 +48,13 @@ def event_detail(request, org_slug, event_id):
             group['quantity'] += 1
         order.claimants = list(claimants.values())
         order.started_by = order.claimants[0] if order.claimants else None
+
+        if order.menu_item.portions_per_unit:
+            order.price_per_portion = (
+                order.menu_item.price / order.menu_item.portions_per_unit
+            ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        else:
+            order.price_per_portion = None
 
     active_menu_items = list(event.vendor.menu_items.filter(is_active=True).order_by('name'))
 

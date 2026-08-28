@@ -27,7 +27,7 @@
         <fieldset role="group">
           {{ item_form.name }}
           {{ item_form.portions_per_unit }}
-          {{ item_form.price }}
+          <label>{{ vendor.organisation.currency_symbol }} {{ item_form.price }}</label>
           <label>{{ item_form.is_active }} Active</label>
           <button type="submit">Save</button>
         </fieldset>

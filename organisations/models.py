@@ -5,14 +5,26 @@ from django.utils.text import slugify
 
 RESERVED_SLUGS = {"admin", "accounts", "organisations", "orders", "static"}
 
+CURRENCY_CHOICES = [
+    ("EUR", "Euro (€)"),
+    ("GBP", "British Pound (£)"),
+    ("USD", "US Dollar ($)"),
+]
+CURRENCY_SYMBOLS = {code: label.rsplit("(", 1)[1].rstrip(")") for code, label in CURRENCY_CHOICES}
+
 
 class Organisation(models.Model):
     name = models.CharField(max_length=255, unique=True)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="EUR")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+    @property
+    def currency_symbol(self):
+        return CURRENCY_SYMBOLS.get(self.currency, self.currency)
 
     def clean(self):
         super().clean()

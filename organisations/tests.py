@@ -8,6 +8,7 @@ from django.utils import timezone
 from events.models import Event
 from vendors.models import Vendor
 
+from .forms import OrganisationForm
 from .models import Organisation, OrganisationMembership
 from .permissions import organisation_member_required, user_can_access_organisation
 
@@ -44,6 +45,33 @@ class OrganisationSlugTests(TestCase):
 
         with self.assertRaises(ValidationError):
             org.full_clean()
+
+
+class OrganisationCurrencyTests(TestCase):
+    def test_new_organisation_defaults_to_eur(self):
+        org = Organisation.objects.create(name="Acme")
+
+        self.assertEqual(org.currency, "EUR")
+        self.assertEqual(org.currency_symbol, "€")
+
+    def test_currency_symbol_for_each_choice(self):
+        self.assertEqual(Organisation(currency="EUR").currency_symbol, "€")
+        self.assertEqual(Organisation(currency="GBP").currency_symbol, "£")
+        self.assertEqual(Organisation(currency="USD").currency_symbol, "$")
+
+    def test_currency_symbol_falls_back_to_code_for_unrecognized_currency(self):
+        org = Organisation(currency="XYZ")
+
+        self.assertEqual(org.currency_symbol, "XYZ")
+
+    def test_organisation_form_accepts_a_currency_change(self):
+        org = Organisation.objects.create(name="Acme")
+
+        form = OrganisationForm(data={"name": "Acme", "currency": "USD"}, instance=org)
+
+        self.assertTrue(form.is_valid())
+        saved = form.save()
+        self.assertEqual(saved.currency, "USD")
 
 
 class UserCanAccessOrganisationTests(TestCase):
@@ -294,7 +322,7 @@ class OrganisationEditViewTests(TestCase):
     def test_post_updates_organisation_name_and_redirects_to_new_slug(self):
         self.client.force_login(self.member)
 
-        response = self.client.post(self.url, {"name": "Acme Renamed"})
+        response = self.client.post(self.url, {"name": "Acme Renamed", "currency": "EUR"})
 
         new_url = reverse("organisations:organisation_detail", args=["acme-renamed"])
         self.assertRedirects(response, new_url)
@@ -311,6 +339,14 @@ class OrganisationEditViewTests(TestCase):
         self.assertFormError(response.context["form"], "name", "This field is required.")
         self.organisation.refresh_from_db()
         self.assertEqual(self.organisation.name, "Acme")
+
+    def test_post_updates_currency(self):
+        self.client.force_login(self.member)
+
+        self.client.post(self.url, {"name": "Acme", "currency": "GBP"})
+
+        self.organisation.refresh_from_db()
+        self.assertEqual(self.organisation.currency, "GBP")
 
 
 class LoginLogoutTests(TestCase):

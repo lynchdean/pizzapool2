@@ -340,6 +340,39 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Alice's order")
 
+    def test_order_header_shows_price_per_portion(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "€2.50/portion")
+
+    def test_price_per_portion_rounds_to_two_decimal_places(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Odd Pizza", portions_per_unit=3, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "€3.33/portion")
+
+    def test_order_header_uses_organisations_currency_symbol(self):
+        self.organisation.currency = "GBP"
+        self.organisation.save()
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "£2.50/portion")
+        self.assertNotContains(response, "€2.50/portion")
+
     def test_order_shows_claimant_roster_with_name_and_phone(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
