@@ -395,6 +395,42 @@ class LoginLogoutTests(TestCase):
 
         self.assertRedirects(response, reverse("login"))
 
+    def test_nav_login_link_points_back_to_current_page(self):
+        organisation = Organisation.objects.create(name="Acme")
+        url = reverse("organisations:organisation_detail", args=[organisation.slug])
+
+        response = self.client.get(url)
+
+        self.assertContains(response, f'href="{reverse("login")}?next={url}"')
+
+    def test_login_with_next_redirects_to_that_page(self):
+        organisation = Organisation.objects.create(name="Acme")
+        next_url = reverse("organisations:organisation_detail", args=[organisation.slug])
+
+        response = self.client.post(
+            reverse("login"), {"username": "member", "password": "pw", "next": next_url}
+        )
+
+        self.assertRedirects(response, next_url)
+
+    def test_nav_logout_form_includes_hidden_next_field(self):
+        organisation = Organisation.objects.create(name="Acme")
+        self.client.force_login(self.user)
+        url = reverse("organisations:organisation_detail", args=[organisation.slug])
+
+        response = self.client.get(url)
+
+        self.assertContains(response, f'<input type="hidden" name="next" value="{url}">')
+
+    def test_logout_with_next_redirects_to_that_page(self):
+        organisation = Organisation.objects.create(name="Acme")
+        next_url = reverse("organisations:organisation_detail", args=[organisation.slug])
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("logout"), {"next": next_url})
+
+        self.assertRedirects(response, next_url)
+
 
 class PasswordResetTests(TestCase):
     def setUp(self):
