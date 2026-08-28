@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 
-RESERVED_SLUGS = {"admin", "accounts", "organisations", "orders", "static"}
+RESERVED_SLUGS = {"admin", "accounts", "organisations", "orders", "static", "healthz"}
 
 CURRENCY_CHOICES = [
     ("EUR", "Euro (€)"),

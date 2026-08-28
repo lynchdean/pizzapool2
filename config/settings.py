@@ -29,6 +29,32 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 
+# Security settings for deployment, overridable via env vars.
+#
+# SESSION_COOKIE_SECURE/CSRF_COOKIE_SECURE just add the `Secure` flag to
+# cookies, so they're safe to default on whenever DEBUG is off.
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
+
+# SECURE_SSL_REDIRECT, unlike the cookie flags above, actively 301-redirects
+# every non-HTTPS request — including in-process requests like the Django
+# test client's and any CI run with DEBUG=False, which aren't going through
+# real TLS termination. It only makes sense once a reverse proxy is actually
+# terminating HTTPS in front of this app, so it stays opt-in (default False)
+# rather than tied to DEBUG, and its deploy check is silenced alongside HSTS
+# below until that's true.
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+
+# Inert until a reverse proxy actually sends this header. Whichever proxy is
+# used in front of this app MUST strip/overwrite any client-supplied
+# X-Forwarded-Proto before it reaches Django, or this becomes spoofable.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# security.W008 (SECURE_SSL_REDIRECT) and W004 (SECURE_HSTS_SECONDS) are
+# deliberately deferred until a domain and working HTTPS actually exist —
+# enabling either before then breaks plain-HTTP testing/CI for no benefit.
+SILENCED_SYSTEM_CHECKS = ['security.W004', 'security.W008']
+
 
 # Application definition
 
@@ -48,6 +74,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -128,6 +155,18 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# The manifest storage requires collectstatic to have already run (it errors
+# on any {% static %} reference missing from the manifest), so it's only used
+# once DEBUG is off — dev/test keep Django's plain static storage, unchanged.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+                    if not DEBUG else "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -141,3 +180,12 @@ PHONENUMBER_DEFAULT_REGION = 'IE'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'organisations:my_organisations'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Plain stdout logging — works under docker logs, systemd/journald, or any
+# PaaS log stream without further config.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['console'], 'level': 'INFO'},
+}
