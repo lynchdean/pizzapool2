@@ -257,6 +257,23 @@ class EventDetailViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_live_content_polls_via_htmx_when_event_open(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'id="live-content"')
+        self.assertContains(response, f'hx-get="{self.url}"')
+        self.assertContains(response, 'hx-trigger="every 15s')
+        self.assertContains(response, 'hx-select="#live-content"')
+        self.assertContains(response, 'hx-target="#live-content"')
+
+    def test_no_htmx_polling_when_event_not_open(self):
+        self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "hx-trigger")
+
     def test_menu_item_with_no_orders_offers_start_section(self):
         MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
@@ -359,6 +376,28 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Full")
         self.assertNotContains(response, "Join (")
+
+    def test_orders_shown_in_creation_order_not_grouped_by_menu_item(self):
+        # Names deliberately chosen so alphabetical-by-item-name order (the
+        # old grouping behavior) would disagree with creation order.
+        item_z = MenuItem.objects.create(
+            vendor=self.vendor, name="Zebra Pizza", portions_per_unit=4, price="10.00"
+        )
+        item_a = MenuItem.objects.create(
+            vendor=self.vendor, name="Apple Pizza", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item_z)
+        Order.objects.create(event=self.event, menu_item=item_a)
+
+        response = self.client.get(self.url)
+        content = response.content.decode()
+
+        self.assertLess(content.index("Zebra Pizza"), content.index("Apple Pizza"))
+
+    def test_no_orders_shows_empty_message(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "No orders yet.")
 
     def test_inactive_menu_item_with_no_orders_not_shown_at_all(self):
         MenuItem.objects.create(

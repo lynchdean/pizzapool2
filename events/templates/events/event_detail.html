@@ -7,51 +7,49 @@
 </hgroup>
 
 {% if event.status == 'open' %}
-  {% for item in menu_items %}
+<div id="live-content"
+     hx-get="{{ request.path }}"
+     hx-trigger="every 15s [document.activeElement.tagName!='INPUT' && document.activeElement.tagName!='SELECT']"
+     hx-select="#live-content"
+     hx-target="#live-content"
+     hx-swap="outerHTML">
+  {% for order in orders %}
   <article>
-    <header><strong>{{ item.name }}</strong></header>
+    <header>
+      <strong>{{ order.menu_item.name }}</strong> —
+      {% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}
+      {% if order.is_fully_claimed %} (Full){% endif %}
+    </header>
 
-    {% for order in item.event_orders %}
-      <div class="order-block">
-        <header>
-          {% if order.started_by %}
-            <strong>{{ order.started_by.name }}'s order</strong>{% if order.is_fully_claimed %} — Full{% endif %}
-          {% else %}
-            Order #{{ forloop.counter }}
-          {% endif %}
-        </header>
+    {% if order.claimants %}
+      <ul>
+        {% for claimant in order.claimants %}
+          <li>
+            {{ claimant.name }} — {{ claimant.quantity }} portion{{ claimant.quantity|pluralize }}
+            {% if claimant.phone %} ({{ claimant.phone }}){% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
 
-        {% if order.claimants %}
-          <ul>
-            {% for claimant in order.claimants %}
-              <li>
-                {{ claimant.name }} — {{ claimant.quantity }} portion{{ claimant.quantity|pluralize }}
-                {% if claimant.phone %} ({{ claimant.phone }}){% endif %}
-              </li>
+    {% if order.available_count > 0 %}
+      <form method="post" action="{% url 'orders:join_order' order.id %}">
+        {% csrf_token %}
+        <fieldset role="group">
+          <input type="text" name="claimant_name" placeholder="Your name" required>
+          <input type="tel" name="claimant_phone" placeholder="Phone number" required>
+          <select name="quantity">
+            {% for n in order.available_range %}
+              <option value="{{ n }}">{{ n }}</option>
             {% endfor %}
-          </ul>
-        {% endif %}
-
-        {% if order.available_count > 0 %}
-          <form method="post" action="{% url 'orders:join_order' order.id %}">
-            {% csrf_token %}
-            <fieldset role="group">
-              <input type="text" name="claimant_name" placeholder="Your name" required>
-              <input type="tel" name="claimant_phone" placeholder="Phone number" required>
-              <select name="quantity">
-                {% for n in order.available_range %}
-                  <option value="{{ n }}">{{ n }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit">Join ({{ order.available_count }} left)</button>
-            </fieldset>
-          </form>
-        {% endif %}
-      </div>
-    {% empty %}
-      <p>No orders started yet for this item.</p>
-    {% endfor %}
+          </select>
+          <button type="submit">Join ({{ order.available_count }} left)</button>
+        </fieldset>
+      </form>
+    {% endif %}
   </article>
+  {% empty %}
+    <p>No orders yet.</p>
   {% endfor %}
 
   {% if active_menu_items %}
@@ -76,6 +74,7 @@
     </form>
   </article>
   {% endif %}
+</div>
 
 {% else %}
 <article>

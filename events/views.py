@@ -24,42 +24,34 @@ def event_detail(request, org_slug, event_id):
 
     portion_qs = Portion.objects.filter(claimant_name__isnull=False).order_by('claimed_at', 'id')
 
-    order_qs = (
+    orders = (
         Order.objects.filter(event=event)
+        .select_related('menu_item')
         .annotate(available_count=Count('portions', filter=Q(portions__claimant_name__isnull=True)))
         .prefetch_related(Prefetch('portions', queryset=portion_qs, to_attr='claimed_portions'))
         .order_by('created_at')
     )
+    for order in orders:
+        order.available_range = range(1, order.available_count + 1)
+        order.is_fully_claimed = order.available_count == 0
 
-    menu_items = (
-        event.vendor.menu_items
-        .filter(Q(is_active=True) | Q(orders__event=event))
-        .distinct()
-        .prefetch_related(Prefetch('orders', queryset=order_qs, to_attr='event_orders'))
-        .order_by('name')
-    )
-    for item in menu_items:
-        for order in item.event_orders:
-            order.available_range = range(1, order.available_count + 1)
-            order.is_fully_claimed = order.available_count == 0
+        claimants = {}
+        for portion in order.claimed_portions:
+            key = (portion.claimant_name, str(portion.claimant_phone))
+            group = claimants.setdefault(key, {
+                'name': portion.claimant_name,
+                'phone': portion.claimant_phone,
+                'quantity': 0,
+            })
+            group['quantity'] += 1
+        order.claimants = list(claimants.values())
+        order.started_by = order.claimants[0] if order.claimants else None
 
-            claimants = {}
-            for portion in order.claimed_portions:
-                key = (portion.claimant_name, str(portion.claimant_phone))
-                group = claimants.setdefault(key, {
-                    'name': portion.claimant_name,
-                    'phone': portion.claimant_phone,
-                    'quantity': 0,
-                })
-                group['quantity'] += 1
-            order.claimants = list(claimants.values())
-            order.started_by = order.claimants[0] if order.claimants else None
-
-    active_menu_items = [item for item in menu_items if item.is_active]
+    active_menu_items = list(event.vendor.menu_items.filter(is_active=True).order_by('name'))
 
     return render(request, 'events/event_detail.html', {
         'event': event,
-        'menu_items': menu_items,
+        'orders': orders,
         'active_menu_items': active_menu_items,
     })
 

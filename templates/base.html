@@ -7,6 +7,7 @@
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}PizzaPool{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/pico.min.css' %}">
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
   <style>
     li.success { color: var(--pico-ins-color); }
     li.error { color: var(--pico-del-color); }
@@ -18,17 +19,6 @@
     }
     .item-row form:first-child {
       flex: 1;
-    }
-
-    .order-block {
-      border-top: 1px solid var(--pico-muted-border-color);
-      padding-top: var(--pico-spacing);
-      margin-top: var(--pico-spacing);
-    }
-    .order-block:first-child {
-      border-top: none;
-      padding-top: 0;
-      margin-top: 0;
     }
   </style>
 </head>
