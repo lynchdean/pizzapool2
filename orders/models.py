@@ -5,10 +5,13 @@ from events.models import Event
 from vendors.models import MenuItem
 from phonenumber_field.modelfields import PhoneNumberField
 
+from config.utils import generate_public_id
+
 
 class Order(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="orders")
     menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT, related_name="orders")
+    public_id = models.CharField(max_length=10, unique=True, editable=False, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -20,6 +23,11 @@ class Order(models.Model):
             raise ValidationError("Cannot create an order for an event that is not open.")
 
     def save(self, *args, **kwargs):
+        if not self.public_id:
+            public_id = generate_public_id()
+            while Order.objects.filter(public_id=public_id).exists():
+                public_id = generate_public_id()
+            self.public_id = public_id
         is_new = self._state.adding
         with transaction.atomic():
             super().save(*args, **kwargs)

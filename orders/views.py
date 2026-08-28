@@ -21,19 +21,19 @@ def _flash_form_errors(request, form):
 
 def join_order_view(request, order_id):
     order = get_object_or_404(
-        Order.objects.select_related('event', 'event__organisation'), pk=order_id
+        Order.objects.select_related('event', 'event__organisation'), public_id=order_id
     )
     event = order.event
 
     if request.method != 'POST':
-        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.id)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
     max_quantity = order.portions.filter(claimant_name__isnull=True).count()
     form = JoinOrderForm(request.POST, max_quantity=max_quantity)
 
     if not form.is_valid():
         _flash_form_errors(request, form)
-        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.id)
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
     try:
         claimed = claim_portions_by_quantity(
@@ -48,11 +48,11 @@ def join_order_view(request, order_id):
     except NotEnoughPortionsError:
         messages.error(request, "Sorry, someone else just claimed those. Please try again.")
 
-    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.id)
+    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
 
 def start_order_view(request, event_id):
-    event = get_object_or_404(Event.objects.select_related('organisation'), pk=event_id)
+    event = get_object_or_404(Event.objects.select_related('organisation'), public_id=event_id)
 
     if request.method != 'POST':
         return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)

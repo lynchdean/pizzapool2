@@ -22,6 +22,6 @@ urlpatterns = [
     path('<slug:org_slug>/vendors/<int:vendor_id>/menu-items/<int:item_id>/delete/', vendor_views.menu_item_delete, name='menu_item_delete'),
 
     path('<slug:org_slug>/events/new/', event_views.event_create, name='event_create'),
-    path('<slug:org_slug>/events/<int:event_id>/edit/', event_views.event_edit, name='event_edit'),
-    path('<slug:org_slug>/events/<int:event_id>/delete/', event_views.event_delete, name='event_delete'),
+    path('<slug:org_slug>/events/<event_id>/edit/', event_views.event_edit, name='event_edit'),
+    path('<slug:org_slug>/events/<event_id>/delete/', event_views.event_delete, name='event_delete'),
 ]

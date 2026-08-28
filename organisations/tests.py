@@ -258,10 +258,10 @@ class OrganisationDetailViewTests(TestCase):
         self.assertNotContains(response, "Add vendor")
         self.assertNotContains(response, "Add event")
         self.assertNotContains(
-            response, reverse("organisations:event_edit", args=[self.organisation.slug, self.event.id])
+            response, reverse("organisations:event_edit", args=[self.organisation.slug, self.event.public_id])
         )
         self.assertNotContains(
-            response, reverse("organisations:event_delete", args=[self.organisation.slug, self.event.id])
+            response, reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
         )
 
     def test_unknown_slug_returns_404(self):

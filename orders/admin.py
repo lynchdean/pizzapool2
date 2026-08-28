@@ -15,7 +15,7 @@ class PortionInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("menu_item", "event", "created_at")
+    list_display = ("menu_item", "event", "public_id", "created_at")
     inlines = [PortionInline]
 
 

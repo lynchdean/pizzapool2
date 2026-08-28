@@ -94,7 +94,7 @@ class EventEditViewTests(TestCase):
         self.item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
-        self.url = reverse("organisations:event_edit", args=[self.organisation.slug, self.event.id])
+        self.url = reverse("organisations:event_edit", args=[self.organisation.slug, self.event.public_id])
         self.client.force_login(self.member)
 
     def test_member_can_edit_event_fields(self):
@@ -126,7 +126,7 @@ class EventEditViewTests(TestCase):
         self.assertEqual(self.event.vendor, self.vendor)
 
     def test_event_belonging_to_other_organisation_returns_404(self):
-        url = reverse("organisations:event_edit", args=[self.other_organisation.slug, self.event.id])
+        url = reverse("organisations:event_edit", args=[self.other_organisation.slug, self.event.public_id])
 
         response = self.client.get(url)
 
@@ -198,7 +198,7 @@ class EventDeleteViewTests(TestCase):
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
         )
-        self.url = reverse("organisations:event_delete", args=[self.organisation.slug, self.event.id])
+        self.url = reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
         self.client.force_login(self.member)
 
     def test_get_shows_confirmation_with_zero_claimed_count(self):
@@ -246,14 +246,21 @@ class EventDetailViewTests(TestCase):
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
         )
-        self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+        self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
 
     def test_wrong_org_slug_returns_404(self):
         other_org = Organisation.objects.create(name="Other Co")
 
         response = self.client.get(
-            reverse("events:event_detail", args=[other_org.slug, self.event.id])
+            reverse("events:event_detail", args=[other_org.slug, self.event.public_id])
         )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_looking_up_by_raw_integer_pk_returns_404(self):
+        url = reverse("events:event_detail", args=[self.organisation.slug, str(self.event.pk)])
+
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, 404)
 
@@ -441,3 +448,35 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertNotContains(response, "Discontinued Pizza")
+
+
+class EventPublicIdTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+
+    def test_two_events_get_different_public_ids(self):
+        event1 = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
+            deadline=timezone.now(),
+        )
+        event2 = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Saturday Lunch",
+            deadline=timezone.now(),
+        )
+
+        self.assertNotEqual(event1.public_id, event2.public_id)
+        self.assertTrue(event1.public_id)
+        self.assertTrue(event2.public_id)
+
+    def test_resaving_an_event_does_not_change_its_public_id(self):
+        event = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
+            deadline=timezone.now(),
+        )
+        original_public_id = event.public_id
+
+        event.name = "Friday Lunch (renamed)"
+        event.save()
+
+        self.assertEqual(event.public_id, original_public_id)

@@ -14,14 +14,14 @@ from .services import EventHasClaimedPortionsError, delete_event
 
 
 def _get_org_event(org_slug, event_id):
-    return get_object_or_404(Event, pk=event_id, organisation__slug=org_slug)
+    return get_object_or_404(Event, public_id=event_id, organisation__slug=org_slug)
 
 
 # events/views.py
 def event_detail(request, org_slug, event_id):
     event = get_object_or_404(
         Event.objects.select_related('vendor', 'organisation'),
-        pk=event_id, organisation__slug=org_slug,
+        public_id=event_id, organisation__slug=org_slug,
     )
 
     portion_qs = Portion.objects.filter(claimant_name__isnull=False).order_by('claimed_at', 'id')

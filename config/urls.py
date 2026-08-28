@@ -23,6 +23,6 @@ urlpatterns = [
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('orders/', include('orders.urls')),
-    path('<slug:org_slug>/', include('events.urls')),
     path('', include('organisations.urls')),
+    path('<slug:org_slug>/', include('events.urls')),
 ]

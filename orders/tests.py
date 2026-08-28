@@ -137,7 +137,7 @@ class JoinOrderViewTests(TestCase):
             deadline=timezone.now(),
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
-        self.url = reverse("orders:join_order", args=[self.order.id])
+        self.url = reverse("orders:join_order", args=[self.order.public_id])
         self.valid_data = {
             "claimant_name": "Bob",
             "claimant_phone": "0871234567",
@@ -148,7 +148,7 @@ class JoinOrderViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertRedirects(
-            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
         )
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
@@ -164,6 +164,13 @@ class JoinOrderViewTests(TestCase):
 
     def test_nonexistent_order_returns_404(self):
         url = reverse("orders:join_order", args=[999999])
+
+        response = self.client.post(url, self.valid_data)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_looking_up_by_raw_integer_pk_returns_404(self):
+        url = reverse("orders:join_order", args=[str(self.order.pk)])
 
         response = self.client.post(url, self.valid_data)
 
@@ -213,7 +220,7 @@ class JoinOrderViewTests(TestCase):
         self.event.save()
 
         response = self.client.get(
-            reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+            reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
         )
 
         self.assertNotContains(response, "<form")
@@ -234,7 +241,7 @@ class StartOrderViewTests(TestCase):
             name="Friday Lunch",
             deadline=timezone.now(),
         )
-        self.url = reverse("orders:start_order", args=[self.event.id])
+        self.url = reverse("orders:start_order", args=[self.event.public_id])
         self.valid_data = {
             "menu_item_id": self.menu_item.id,
             "claimant_name": "Alice",
@@ -246,7 +253,7 @@ class StartOrderViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertRedirects(
-            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.id])
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
         )
         self.assertFalse(Order.objects.filter(event=self.event).exists())
 
