@@ -15,15 +15,22 @@
   <header><strong>Menu items</strong></header>
 
   {% for item, item_form in item_forms %}
-    <div class="item-row">
-      <form method="post" action="{% url 'organisations:menu_item_edit' org_slug vendor.id item.id %}">
+    <details {% if item_form.errors %}open{% endif %}>
+      <summary>
+        {{ item.name }} · {{ item.portions_per_unit }} portion{{ item.portions_per_unit|pluralize }} ·
+        {{ vendor.organisation.currency_symbol }}{{ item.price }} ·
+        {% if item.is_active %}Active{% else %}Inactive{% endif %}
+      </summary>
+      <form method="post" action="{% url 'organisations:menu_item_edit' org_slug vendor.id item.id %}" id="menu-item-form-{{ item.id }}">
         {% csrf_token %}
-        <fieldset role="group">
+        <fieldset class="menu-item-fields">
           {{ item_form.name }}
           {{ item_form.portions_per_unit }}
-          <label>{{ vendor.organisation.currency_symbol }} {{ item_form.price }}</label>
-          <label>{{ item_form.is_active }} Active</label>
-          <button type="submit">Save</button>
+          <span class="currency-input">
+            <span class="currency-symbol">{{ vendor.organisation.currency_symbol }}</span>
+            {{ item_form.price }}
+          </span>
+          <label class="menu-item-active">{{ item_form.is_active }} Active</label>
         </fieldset>
         {% if item_form.errors %}
           <ul>
@@ -35,12 +42,15 @@
           </ul>
         {% endif %}
       </form>
-      <form method="post" action="{% url 'organisations:menu_item_delete' org_slug vendor.id item.id %}"
-            onsubmit="return confirm('Delete this menu item?');">
-        {% csrf_token %}
-        <button type="submit" class="secondary outline">Delete</button>
-      </form>
-    </div>
+      <div class="menu-item-actions">
+        <button type="submit" form="menu-item-form-{{ item.id }}">Save</button>
+        <form method="post" action="{% url 'organisations:menu_item_delete' org_slug vendor.id item.id %}"
+              onsubmit="return confirm('Delete this menu item?');">
+          {% csrf_token %}
+          <button type="submit" class="secondary outline">Delete</button>
+        </form>
+      </div>
+    </details>
   {% empty %}
     <p>No menu items yet.</p>
   {% endfor %}

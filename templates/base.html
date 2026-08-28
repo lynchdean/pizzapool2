@@ -12,13 +12,64 @@
     li.success { color: var(--pico-ins-color); }
     li.error { color: var(--pico-del-color); }
 
-    .item-row {
+    .menu-item-fields {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .item-row form:first-child {
-      flex: 1;
+    .menu-item-fields > input[type="text"],
+    .menu-item-fields > input[type="number"] {
+      flex: 1 1 100px;
+      min-width: 3.5rem;
+      width: auto;
+      margin-bottom: 0;
+    }
+
+    .menu-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .menu-item-actions button {
+      flex: 0 0 auto;
+      width: auto;
+      margin-bottom: 0;
+    }
+    .menu-item-actions form {
+      margin-bottom: 0;
+    }
+
+    .menu-item-active {
+      display: inline-flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 0.35rem;
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+    .menu-item-active input {
+      margin-bottom: 0;
+    }
+
+    .currency-input {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      flex: 1 1 120px;
+      min-width: 4.5rem;
+    }
+    .currency-input .currency-symbol {
+      position: absolute;
+      left: 0.75rem;
+      color: var(--pico-muted-color);
+      pointer-events: none;
+    }
+    .currency-input input {
+      padding-left: 1.75rem;
+      width: 100%;
+      margin-bottom: 0;
     }
   </style>
 </head>

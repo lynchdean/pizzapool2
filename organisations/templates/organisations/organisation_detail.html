@@ -4,9 +4,7 @@
 <h1>{{ organisation.name }}</h1>
 
 {% if can_manage %}
-<article>
   <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary outline">Edit organisation</a>
-</article>
 {% endif %}
 
 <div class="grid">
