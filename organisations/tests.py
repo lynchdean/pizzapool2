@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AnonymousUser, User
+from django.core import mail
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
@@ -376,3 +377,47 @@ class LoginLogoutTests(TestCase):
         response = self.client.post(reverse("logout"))
 
         self.assertRedirects(response, reverse("login"))
+
+
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="member", password="old-password", email="member@example.com"
+        )
+
+    def test_password_reset_page_renders(self):
+        response = self.client.get(reverse("password_reset"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_requesting_reset_for_known_email_sends_an_email(self):
+        response = self.client.post(reverse("password_reset"), {"email": "member@example.com"})
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("member@example.com", mail.outbox[0].to)
+
+    def test_requesting_reset_for_unknown_email_sends_nothing_but_still_redirects(self):
+        response = self.client.post(reverse("password_reset"), {"email": "nobody@example.com"})
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_full_reset_flow_lets_user_log_in_with_new_password(self):
+        self.client.post(reverse("password_reset"), {"email": "member@example.com"})
+        reset_link = [
+            line for line in mail.outbox[0].body.splitlines() if "/accounts/reset/" in line
+        ][0].strip()
+
+        confirm_response = self.client.get(reset_link, follow=True)
+        set_password_url = confirm_response.redirect_chain[-1][0]
+
+        response = self.client.post(set_password_url, {
+            "new_password1": "a-brand-new-password-123",
+            "new_password2": "a-brand-new-password-123",
+        })
+
+        self.assertRedirects(response, reverse("password_reset_complete"))
+        self.assertTrue(
+            self.client.login(username="member", password="a-brand-new-password-123")
+        )

@@ -181,6 +181,17 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'organisations:my_organisations'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Email — console backend by default so password-reset emails are visible
+# during local dev with zero setup. Point EMAIL_BACKEND/EMAIL_HOST/etc at a
+# real SMTP provider via env vars once one is chosen for the eventual host.
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@pizzapool.local')
+
 # Plain stdout logging — works under docker logs, systemd/journald, or any
 # PaaS log stream without further config.
 LOGGING = {
