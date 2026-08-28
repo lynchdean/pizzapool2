@@ -109,7 +109,7 @@ def unclaim_portions(event, order_id, claimant_phone):
     """
     Releases every portion on order_id claimed under claimant_phone, freeing
     them up for someone else to claim. Matches purely on phone number (per
-    product decision) — if multiple different names share one phone on the
+    product decision): if multiple different names share one phone on the
     same order, this releases all of them together.
     """
     with transaction.atomic():

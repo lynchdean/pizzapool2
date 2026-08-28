@@ -26,7 +26,7 @@ def event_detail(request, org_slug, event_id):
 
     portion_qs = Portion.objects.filter(claimant_name__isnull=False).order_by('claimed_at', 'id')
 
-    # 'locked' isn't necessarily "closed" — it can also be used to prep an
+    # 'locked' isn't necessarily "closed": it can also be used to prep an
     # event before it opens, so only 'submitted'/'completed' are treated as
     # genuinely final (no more claims coming, and orders/portions locked in).
     is_finalized = event.status in ('submitted', 'completed')
@@ -41,15 +41,18 @@ def event_detail(request, org_slug, event_id):
     for order in orders:
         order.available_range = range(1, order.available_count + 1)
         order.is_fully_claimed = order.available_count == 0
+        order.claimed_count = order.menu_item.portions_per_unit - order.available_count
 
-        # A full order is guaranteed to proceed regardless of event status. A
-        # partial order's fate is only decided once the event is finalized.
+        # A full order is guaranteed to proceed regardless of event status,
+        # but it's only actually "Confirmed" once the event is finalized;
+        # before then it's just full, not yet locked in. A partial order's
+        # fate is only decided once the event is finalized.
         if order.is_fully_claimed:
-            order.status_label = "Confirmed"
+            order.status_label = "Confirmed" if is_finalized else "Full"
         elif is_finalized:
             order.status_label = "Incomplete, will not proceed"
         else:
-            order.status_label = "Incomplete"
+            order.status_label = f"{order.claimed_count}/{order.menu_item.portions_per_unit} claimed"
 
         claimants = {}
         for portion in order.claimed_portions:

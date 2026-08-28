@@ -505,7 +505,7 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "2 portions")
 
-    def test_fully_claimed_order_shows_completion_indicator(self):
+    def test_fully_claimed_order_shows_full_indicator_while_open(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
         )
@@ -514,10 +514,11 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Confirmed")
+        self.assertContains(response, "Full")
+        self.assertNotContains(response, "Confirmed")
         self.assertNotContains(response, "Join (")
 
-    def test_partially_claimed_order_shows_incomplete_while_open(self):
+    def test_partially_claimed_order_shows_fraction_while_open(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
@@ -526,12 +527,12 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "(Incomplete)")
+        self.assertContains(response, "(1/4 claimed)")
         self.assertNotContains(response, "will not proceed")
 
-    def test_partially_claimed_order_still_shows_plain_incomplete_when_locked(self):
-        # 'locked' isn't necessarily "closed" — it may be used to prep an
-        # event before it opens — so it shouldn't claim a partial order is
+    def test_partially_claimed_order_still_shows_fraction_when_locked(self):
+        # 'locked' isn't necessarily "closed": it may be used to prep an
+        # event before it opens, so it shouldn't claim a partial order is
         # doomed the way 'submitted'/'completed' can.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
@@ -543,7 +544,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "(Incomplete)")
+        self.assertContains(response, "(1/4 claimed)")
         self.assertNotContains(response, "will not proceed")
 
     def test_partially_claimed_order_shows_will_not_proceed_once_submitted(self):
@@ -575,13 +576,29 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "no longer open for claims")
 
-    def test_fully_claimed_order_says_confirmed_even_when_locked(self):
+    def test_fully_claimed_order_still_shows_full_when_locked(self):
+        # 'locked' isn't finalized (it may just be prepping the event before
+        # it opens), so a full order shouldn't jump to "Confirmed" yet either.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
         )
         order = Order.objects.create(event=self.event, menu_item=item)
         claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
         self.event.status = "locked"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Full")
+        self.assertNotContains(response, "Confirmed")
+
+    def test_fully_claimed_order_says_confirmed_once_finalized(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "submitted"
         self.event.save()
 
         response = self.client.get(self.url)
