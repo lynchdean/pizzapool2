@@ -204,6 +204,23 @@ class OrganisationDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Friday Lunch")
 
+    def test_events_ordered_by_deadline_not_creation_order(self):
+        # Created deliberately out of deadline order, so ordering by pk/
+        # creation time (the old default) would disagree with this.
+        later = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Later Event",
+            deadline=timezone.now() + timezone.timedelta(days=5),
+        )
+        earlier = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Earlier Event",
+            deadline=timezone.now() + timezone.timedelta(days=1),
+        )
+
+        response = self.client.get(self.url)
+        content = response.content.decode()
+
+        self.assertLess(content.index("Earlier Event"), content.index("Later Event"))
+
     def test_vendors_list_hidden_for_anonymous_visitors(self):
         response = self.client.get(self.url)
 

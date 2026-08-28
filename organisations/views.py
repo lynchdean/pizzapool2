@@ -34,7 +34,7 @@ def organisation_detail(request, org_slug):
     return render(request, 'organisations/organisation_detail.html', {
         'organisation': organisation,
         'vendors': organisation.vendors.all(),
-        'events': organisation.events.select_related('vendor').all(),
+        'events': organisation.events.select_related('vendor').order_by('deadline'),
         'can_manage': can_manage,
     })
 
