@@ -53,5 +53,9 @@ urlpatterns = [
     path('<slug:org_slug>/', include('events.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Whitenoise only serves STATIC assets (collected at build time), not
+# runtime-uploaded MEDIA files - at this app's traffic volume, having Django
+# itself serve /media/ in production too (backed by a persistent volume at
+# MEDIA_ROOT) is simpler and perfectly fine, rather than standing up a
+# separate object-storage service.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

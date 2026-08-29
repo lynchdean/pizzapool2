@@ -22,11 +22,21 @@ def _flash_form_errors(request, form):
             messages.error(request, error)
 
 
+def _get_client_ip(request):
+    # Behind the reverse proxy (Traefik/Coolify), REMOTE_ADDR is the proxy's
+    # own internal IP for every request, which would collapse the rate limit
+    # to one shared bucket for all users. The proxy appends the real client
+    # IP as the last entry in X-Forwarded-For (any earlier entries could be
+    # spoofed by the client itself, since the proxy doesn't strip them).
+    # Falls back to REMOTE_ADDR for direct connections (e.g. local dev).
+    forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if forwarded_for:
+        return forwarded_for.split(',')[-1].strip()
+    return request.META.get('REMOTE_ADDR', 'unknown')
+
+
 def _is_rate_limited(request, action, limit=10, period=60):
-    # REMOTE_ADDR is correct for direct connections; if this ends up behind
-    # a reverse proxy later, that proxy needs to be configured to pass a
-    # trustworthy client IP (e.g. X-Forwarded-For) for this to stay accurate.
-    ip = request.META.get('REMOTE_ADDR', 'unknown')
+    ip = _get_client_ip(request)
     cache_key = f'ratelimit:{action}:{ip}'
     if cache.add(cache_key, 1, timeout=period):
         return False

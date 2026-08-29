@@ -29,6 +29,11 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 
+# Needed once real HTTPS traffic reaches this app through a reverse proxy -
+# Django's CSRF check compares the request's Origin/Referer against this list
+# rather than ALLOWED_HOSTS. e.g. CSRF_TRUSTED_ORIGINS=https://pizzapool.example.com
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+
 # Security settings for deployment, overridable via env vars.
 #
 # SESSION_COOKIE_SECURE/CSRF_COOKIE_SECURE just add the `Secure` flag to
