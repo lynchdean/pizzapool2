@@ -183,7 +183,7 @@
 <body>
   <nav class="container">
     <ul>
-      <li><strong>pizzapool</strong></li>
+      <li><a href="{% url 'organisations:home' %}"><strong>pizzapool</strong></a></li>
     </ul>
     <ul>
       {% if user.is_authenticated %}

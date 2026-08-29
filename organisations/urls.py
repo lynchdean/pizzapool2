@@ -8,6 +8,7 @@ from . import views
 app_name = 'organisations'
 
 urlpatterns = [
+    path('', views.home, name='home'),
     path('organisations/', views.my_organisations, name='my_organisations'),
 
     path('<slug:org_slug>/', views.organisation_detail, name='organisation_detail'),

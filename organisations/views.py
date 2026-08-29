@@ -8,6 +8,10 @@ from .models import Organisation, OrganisationMembership
 from .permissions import organisation_member_required, user_can_access_organisation
 
 
+def home(request):
+    return render(request, 'organisations/home.html')
+
+
 @login_required
 def my_organisations(request):
     if request.user.is_superuser:
