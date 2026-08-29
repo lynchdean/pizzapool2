@@ -3,6 +3,7 @@ certifi==2025.11.12
 Django==6.0.7
 django-phonenumber-field[phonenumbers]==8.5.0
 gunicorn==26.2.0
+Pillow==12.3.0
 phonenumbers==9.0.37
 psycopg2-binary==2.9.12
 python-decouple==3.8

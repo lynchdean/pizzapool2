@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ organisation.name }}</h1>
+<div class="page-header-with-image">
+  <h1>{{ organisation.name }}</h1>
+  {% if organisation.image %}<img src="{{ organisation.image.url }}" alt="" class="org-image">{% endif %}
+</div>
 
 {% if can_manage %}
   <div class="action-bar">

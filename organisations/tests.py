@@ -1,16 +1,32 @@
+import shutil
+import tempfile
+from io import BytesIO
+
+from PIL import Image
+
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
 from django.core import mail
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from events.models import Event
 from vendors.models import MenuItem, Vendor
 
+from .forms import OrganisationForm
 from .models import Organisation, OrganisationMembership
 from .permissions import organisation_member_required, user_can_access_organisation
+
+
+def _make_test_image(name="test.png"):
+    buffer = BytesIO()
+    Image.new("RGB", (10, 10), color="red").save(buffer, format="PNG")
+    buffer.seek(0)
+    return SimpleUploadedFile(name, buffer.read(), content_type="image/png")
 
 
 @organisation_member_required
@@ -484,3 +500,74 @@ class PasswordResetTests(TestCase):
         self.assertTrue(
             self.client.login(username="member", password="a-brand-new-password-123")
         )
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class OrganisationImageTests(TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.member = User.objects.create_user(username="member", password="pw")
+        OrganisationMembership.objects.create(
+            user=self.member, organisation=self.organisation, role="owner"
+        )
+        self.url = reverse("organisations:organisation_edit", args=[self.organisation.slug])
+
+    def test_organisation_form_accepts_an_uploaded_image(self):
+        form = OrganisationForm(
+            data={"name": "Acme", "currency": "EUR"},
+            files={"image": _make_test_image()},
+            instance=self.organisation,
+        )
+
+        self.assertTrue(form.is_valid())
+        saved = form.save()
+        self.assertTrue(saved.image)
+
+    def test_post_with_image_persists_it(self):
+        self.client.force_login(self.member)
+
+        self.client.post(self.url, {
+            "name": "Acme",
+            "currency": "EUR",
+            "image": _make_test_image(),
+        })
+
+        self.organisation.refresh_from_db()
+        self.assertTrue(self.organisation.image)
+
+    def test_detail_page_shows_image_when_present(self):
+        self.organisation.image = _make_test_image()
+        self.organisation.save()
+
+        response = self.client.get(
+            reverse("organisations:organisation_detail", args=[self.organisation.slug])
+        )
+
+        self.assertContains(response, "org-image")
+
+    def test_detail_page_has_no_image_tag_when_absent(self):
+        response = self.client.get(
+            reverse("organisations:organisation_detail", args=[self.organisation.slug])
+        )
+
+        self.assertNotContains(response, "<img")
+
+    def test_event_page_shows_organisation_image_when_present(self):
+        self.organisation.image = _make_test_image()
+        self.organisation.save()
+        vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        event = Event.objects.create(
+            organisation=self.organisation, vendor=vendor, name="Friday Lunch",
+            deadline=timezone.now(),
+        )
+
+        response = self.client.get(
+            reverse("events:event_detail", args=[self.organisation.slug, event.public_id])
+        )
+
+        self.assertContains(response, "org-image")

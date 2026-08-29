@@ -6,4 +6,4 @@ from .models import Organisation
 class OrganisationForm(forms.ModelForm):
     class Meta:
         model = Organisation
-        fields = ['name', 'currency']
+        fields = ['name', 'currency', 'image']

@@ -179,6 +179,13 @@ STORAGES = {
     },
 }
 
+# User-uploaded media (e.g. Organisation.image). Served in dev via
+# config/urls.py; production serving is a separate, host-dependent decision
+# (whitenoise above only handles collectstatic'd static assets, not runtime
+# uploads) left for whenever the actual hosting choice is made.
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 

@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<hgroup>
-  <h1>{{ event.name }}</h1>
-  <p>{{ event.vendor.name }} · {{ event.get_status_display }} · Deadline {{ event.deadline }}</p>
-</hgroup>
+<div class="page-header-with-image">
+  <hgroup>
+    <h1>{{ event.name }}</h1>
+    <p>{{ event.vendor.name }} · {{ event.get_status_display }} · Deadline {{ event.deadline }}</p>
+  </hgroup>
+  <div class="org-badge">
+    <span>{{ event.organisation.name }}</span>
+    {% if event.organisation.image %}<img src="{{ event.organisation.image.url }}" alt="" class="org-image">{% endif %}
+  </div>
+</div>
 
 {% if can_manage %}
 <div class="action-bar">

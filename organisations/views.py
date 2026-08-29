@@ -45,7 +45,7 @@ def organisation_edit(request, org_slug):
     organisation = get_object_or_404(Organisation, slug=org_slug)
 
     if request.method == 'POST':
-        form = OrganisationForm(request.POST, instance=organisation)
+        form = OrganisationForm(request.POST, request.FILES, instance=organisation)
         if form.is_valid():
             form.save()
             messages.success(request, "Organisation updated.")
