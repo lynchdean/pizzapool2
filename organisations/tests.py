@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from events.models import Event
-from vendors.models import Vendor
+from vendors.models import MenuItem, Vendor
 
 from .models import Organisation, OrganisationMembership
 from .permissions import organisation_member_required, user_can_access_organisation
@@ -283,6 +283,19 @@ class OrganisationDetailViewTests(TestCase):
 
         self.assertContains(response, "Pizza Place")
         self.assertContains(response, "Friday Lunch")
+
+    def test_vendors_table_shows_menu_item_count(self):
+        MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        MenuItem.objects.create(
+            vendor=self.vendor, name="Pepperoni", portions_per_unit=4, price="12.00"
+        )
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "<td>2</td>", html=True)
 
     def test_superuser_can_view_any_organisation_dashboard(self):
         self.client.force_login(self.superuser)

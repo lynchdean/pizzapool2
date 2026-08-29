@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import OrganisationForm
@@ -33,7 +34,7 @@ def organisation_detail(request, org_slug):
 
     return render(request, 'organisations/organisation_detail.html', {
         'organisation': organisation,
-        'vendors': organisation.vendors.all(),
+        'vendors': organisation.vendors.annotate(menu_item_count=Count('menu_items')),
         'events': organisation.events.select_related('vendor').order_by('deadline'),
         'can_manage': can_manage,
     })
