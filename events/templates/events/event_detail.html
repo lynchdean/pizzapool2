@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="detail-header">
@@ -85,7 +86,7 @@
     {% endif %}
 
     <div class="portion-tracker">
-      {% for _ in order.claimed_range %}✔️{% endfor %}{% for _ in order.available_range %}🍕{% endfor %}
+      {% for _ in order.claimed_range %}<img src="{% static 'img/logo-grey.png' %}" alt="" class="claimed-icon">{% endfor %}{% for _ in order.available_range %}<img src="{% static 'img/logo-headless-red.png' %}" alt="" class="pizza-icon">{% endfor %}
     </div>
 
     {% if event.status == 'open' and order.available_count > 0 %}

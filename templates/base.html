@@ -67,15 +67,6 @@
       height: 22px;
       vertical-align: middle;
       margin-right: 0.35rem;
-      background-color: #dc143b;
-      -webkit-mask-image: url('{% static "img/logo.png" %}');
-      mask-image: url('{% static "img/logo.png" %}');
-      -webkit-mask-size: contain;
-      mask-size: contain;
-      -webkit-mask-repeat: no-repeat;
-      mask-repeat: no-repeat;
-      -webkit-mask-position: center;
-      mask-position: center;
     }
     .brand-wordmark {
       font-family: 'Montserrat', sans-serif;
@@ -101,14 +92,22 @@
       color: #dc143b;
     }
 
+    .pizza-icon,
+    .claimed-icon {
+      display: inline-block;
+      width: 1.1em;
+      height: 1.1em;
+      transform: rotate(30deg);
+    }
+
     .portion-tracker {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       justify-content: center;
       gap: 0.15rem;
       font-size: 1.25rem;
       line-height: 1;
-      margin-bottom: var(--pico-spacing);
     }
 
     .text-right {
@@ -164,6 +163,7 @@
        bottom padding. Drop it, and only add space below the button while
        expanded (to separate it from the form), not while collapsed. */
     .claim-accordion {
+      margin-top: var(--pico-spacing);
       margin-bottom: 0;
     }
     .claim-accordion[open] > summary {
@@ -282,7 +282,7 @@
 <body>
   <nav class="container">
     <ul>
-      <li><a href="{% url 'organisations:home' %}" class="brand-link"><span class="brand-logo"></span><span class="brand-wordmark">pizzapool</span></a></li>
+      <li><a href="{% url 'organisations:home' %}" class="brand-link"><img src="{% static 'img/logo-red.png' %}" alt="" class="brand-logo"><span class="brand-wordmark">pizzapool</span></a></li>
     </ul>
     <ul>
       <li>
