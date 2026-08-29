@@ -29,9 +29,19 @@ def health_check(request):
     return HttpResponse('ok')
 
 
+class LoginView(auth_views.LoginView):
+    """Falls back to LOGIN_REDIRECT_URL instead of looping back to the login
+    page itself - the nav's "Log in" link always passes the current page as
+    `next`, which self-references when that current page is the login page."""
+
+    def get_redirect_url(self):
+        redirect_to = super().get_redirect_url()
+        return '' if redirect_to == self.request.path else redirect_to
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/login/', LoginView.as_view(), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('accounts/password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
     path('accounts/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),

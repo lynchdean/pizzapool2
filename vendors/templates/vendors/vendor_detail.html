@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ vendor.name }}</h1>
+<div class="detail-header">
+  {% if vendor.organisation.image %}<img src="{{ vendor.organisation.image.url }}" alt="" class="org-image">{% endif %}
+  <h1>{{ vendor.organisation.name }} · {{ vendor.name }}</h1>
+</div>
 
 <div class="action-bar">
-  <a href="{% url 'organisations:vendor_edit' org_slug vendor.id %}" role="button" class="secondary outline">Edit vendor</a>
-  <a href="{% url 'organisations:organisation_detail' org_slug %}">Back to organisation</a>
+  <a href="{% url 'organisations:vendor_edit' org_slug vendor.id %}" role="button" class="secondary">Edit vendor</a>
+  <a href="{% url 'organisations:organisation_detail' org_slug %}" role="button" class="secondary">Back to organisation</a>
 </div>
 
 <article>

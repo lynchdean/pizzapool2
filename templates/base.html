@@ -22,26 +22,66 @@
       object-fit: cover;
       border-radius: var(--pico-border-radius);
     }
-    .page-header-with-image {
+    .detail-header {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    .org-badge {
-      display: flex;
-      align-items: center;
+      text-align: center;
       gap: 0.5rem;
-      flex: 0 0 auto;
-      white-space: nowrap;
     }
 
     .action-bar {
       display: flex;
       align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
       gap: 0.5rem;
       margin-bottom: var(--pico-spacing);
+    }
+
+    /* Pico's [role=group] (used by .join-fields) is nowrap by default, and
+       figure>table has no built-in horizontal scrolling - both overflow the
+       viewport on narrow phone screens without this. */
+    figure {
+      overflow-x: auto;
+    }
+
+    .join-fields {
+      flex-wrap: wrap;
+    }
+    .join-fields > input {
+      flex: 1 1 140px;
+      min-width: 0;
+    }
+
+    /* Pico anchors dropdown submenus to the trigger's left edge by default,
+       which pushes them off-screen when the trigger is the rightmost nav item. */
+    nav .dropdown > summary + ul {
+      left: auto;
+      right: 0;
+    }
+
+    /* Pico's base button styling (border/background/form-element padding) is
+       meant for form submit buttons, not nav dropdown items - its dropdown
+       CSS only has a matching compact style for <a>, via
+       ".dropdown>summary+ul li a". Log out has to stay a real <button>
+       (POST + CSRF), so mirror that <a> rule's exact padding/margin trick
+       here instead of guessing at spacing. */
+    nav .dropdown > summary + ul li button[type="submit"] {
+      display: block;
+      width: 100%;
+      margin: calc(var(--pico-form-element-spacing-vertical) * -.5) calc(var(--pico-form-element-spacing-horizontal) * -1);
+      padding: calc(var(--pico-form-element-spacing-vertical) * .5) var(--pico-form-element-spacing-horizontal);
+      border: none;
+      border-radius: 0;
+      background: none;
+      color: var(--pico-dropdown-color);
+      font-weight: normal;
+      text-align: left;
+    }
+    nav .dropdown > summary + ul li button[type="submit"]:hover,
+    nav .dropdown > summary + ul li button[type="submit"]:focus {
+      background-color: var(--pico-dropdown-hover-background-color);
     }
 
     button.icon-button {
@@ -130,17 +170,23 @@
     </ul>
     <ul>
       {% if user.is_authenticated %}
-        <li><a href="{% url 'organisations:my_organisations' %}">My organisations</a></li>
-        <li>Logged in as {{ user.username }}</li>
         <li>
-          <form method="post" action="{% url 'logout' %}" style="display:inline">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <button type="submit" class="secondary">Log out</button>
-          </form>
+          <details class="dropdown">
+            <summary>Account</summary>
+            <ul>
+              <li><a href="{% url 'organisations:my_organisations' %}">My organisations</a></li>
+              <li>
+                <form method="post" action="{% url 'logout' %}" style="display:inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="secondary">Log out</button>
+                </form>
+              </li>
+            </ul>
+          </details>
         </li>
       {% else %}
-        <li><a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Log in</a></li>
+        <li><a role="button" class="outline" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Log in</a></li>
       {% endif %}
     </ul>
   </nav>
