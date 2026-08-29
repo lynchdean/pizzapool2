@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article>
+  <hgroup>
+    <h1>PizzaPool</h1>
+    <p>Group food orders for your organisation.</p>
+  </hgroup>
+  <p>Set up an event, share the link, and let people claim their own portions by name and phone number, no account needed for anyone but you.</p>
+  {% if user.is_authenticated %}
+    <a href="{% url 'organisations:my_organisations' %}" role="button">My organisations</a>
+  {% else %}
+    <a href="{% url 'login' %}" role="button">Log in</a>
+  {% endif %}
+</article>
+{% endblock %}
