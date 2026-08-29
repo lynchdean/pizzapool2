@@ -7,6 +7,16 @@ from .models import Event
 
 
 class EventForm(forms.ModelForm):
+    # Native browser date/time picker instead of a free-text field the user
+    # has to guess the format for. Browsers submit datetime-local values as
+    # "YYYY-MM-DDTHH:MM", which isn't in Django's default input_formats, so
+    # it's added alongside the pre-existing space-separated formats (still
+    # accepted so nothing else that posts a deadline needs to change).
+    deadline = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'],
+    )
+
     class Meta:
         model = Event
         fields = ['vendor', 'name', 'status', 'deadline']

@@ -55,6 +55,29 @@ class EventCreateViewTests(TestCase):
             response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
 
+    def test_deadline_field_renders_as_native_datetime_picker(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'type="datetime-local"')
+
+    def test_member_can_create_event_with_native_picker_format(self):
+        self.client.force_login(self.member)
+        deadline = timezone.now() + timezone.timedelta(days=1)
+
+        response = self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": "Native Picker Lunch",
+            "status": "open",
+            "deadline": deadline.strftime("%Y-%m-%dT%H:%M"),
+        })
+
+        self.assertRedirects(
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
+        )
+        self.assertTrue(Event.objects.filter(name="Native Picker Lunch").exists())
+
     def test_vendor_choices_restricted_to_organisations_own_vendors(self):
         self.client.force_login(self.member)
         deadline = timezone.now() + timezone.timedelta(days=1)
