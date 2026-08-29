@@ -404,7 +404,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Join (3 left)")
+        self.assertContains(response, "Claim a slice (3 left)")
         self.assertContains(response, "Start a new order")
 
     def test_start_section_dropdown_lists_only_active_menu_items(self):
@@ -434,7 +434,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Join (3 left)")
+        self.assertContains(response, "Claim a slice (3 left)")
         self.assertNotContains(response, "Start another order")
         self.assertNotContains(response, "Start an order")
 
@@ -562,7 +562,9 @@ class EventDetailViewTests(TestCase):
         self.assertNotContains(response, "Confirmed")
         self.assertNotContains(response, "Join (")
 
-    def test_partially_claimed_order_shows_fraction_while_open(self):
+    def test_partially_claimed_order_shows_no_status_label_while_open(self):
+        # The "Claim a slice (N left)" accordion button already shows the
+        # remaining count, so no redundant fraction label is shown here.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
@@ -571,10 +573,10 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "(1/4 claimed)")
+        self.assertNotContains(response, "1/4 claimed")
         self.assertNotContains(response, "will not proceed")
 
-    def test_partially_claimed_order_still_shows_fraction_when_locked(self):
+    def test_partially_claimed_order_still_shows_no_status_label_when_locked(self):
         # 'locked' isn't necessarily "closed": it may be used to prep an
         # event before it opens, so it shouldn't claim a partial order is
         # doomed the way 'submitted'/'completed' can.
@@ -588,7 +590,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "(1/4 claimed)")
+        self.assertNotContains(response, "1/4 claimed")
         self.assertNotContains(response, "will not proceed")
 
     def test_partially_claimed_order_shows_will_not_proceed_once_submitted(self):

@@ -555,7 +555,7 @@ class OrganisationImageTests(TestCase):
             reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
 
-        self.assertNotContains(response, "<img")
+        self.assertNotContains(response, 'class="org-image"')
 
     def test_event_page_shows_organisation_image_when_present(self):
         self.organisation.image = _make_test_image()

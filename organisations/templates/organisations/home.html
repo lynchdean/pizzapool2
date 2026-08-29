@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <article>
   <hgroup>
-    <h1>PizzaPool</h1>
+    <h1 class="home-hero-brand"><img src="{% static 'img/logo-red.png' %}" alt="" class="brand-logo"><span class="brand-wordmark">pizzapool</span></h1>
     <p>Group food orders for your organisation.</p>
   </hgroup>
   <p>Set up an event, share the link, and let people claim their own portions by name and phone number. No account needed for anyone but you.</p>
@@ -29,7 +30,7 @@
     <li>Large orders split fairly into individual portions, so nobody overpays or gets left out.</li>
     <li>Participants don't need an account - just a name and phone number to claim their share.</li>
     <li>Organisers stay in control: lock an event once it's full, and see exactly what to order.</li>
-    <li>Social by design, encourages people to join orders with people and get to know them bette.</li>
+    <li>Social by design, encourages people to join orders with people and get to know them better.</li>
   </ul>
 </article>
 {% endblock %}

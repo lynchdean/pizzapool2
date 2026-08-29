@@ -5,7 +5,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>{% block title %}PizzaPool{% endblock %}</title>
+  <title>{% block title %}pizzapool{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
   <script>
     (function () {
       var stored = localStorage.getItem('pizzapool-theme');
@@ -100,6 +101,21 @@
     .brand-link:focus .brand-wordmark,
     .brand-link:active .brand-wordmark {
       color: #dc143b;
+    }
+
+    .home-hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0;
+    }
+    .home-hero-brand .brand-logo {
+      width: 2.5rem;
+      height: 2.5rem;
+      margin-right: 0;
+    }
+    .home-hero-brand .brand-wordmark {
+      font-size: 2.5rem;
     }
 
     li.success { color: var(--pico-ins-color); }
