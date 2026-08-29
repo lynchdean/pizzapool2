@@ -42,7 +42,7 @@
      hx-swap="outerHTML"
      {% endif %}>
   {% for order in orders %}
-  <article>
+  <article class="order-card">
     <header>
       <strong>{% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}</strong>
       · {{ order.menu_item.name }}
