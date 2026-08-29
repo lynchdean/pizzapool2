@@ -6,11 +6,30 @@
     <h1>PizzaPool</h1>
     <p>Group food orders for your organisation.</p>
   </hgroup>
-  <p>Set up an event, share the link, and let people claim their own portions by name and phone number, no account needed for anyone but you.</p>
+  <p>Set up an event, share the link, and let people claim their own portions by name and phone number. No account needed for anyone but you.</p>
   {% if user.is_authenticated %}
     <a href="{% url 'organisations:my_organisations' %}" role="button">My organisations</a>
   {% else %}
     <a href="{% url 'login' %}" role="button">Log in</a>
   {% endif %}
+</article>
+
+<article>
+  <header><strong>How it works</strong></header>
+  <ol>
+    <li><strong>Create an event</strong> with a vendor - a pizza night, a team lunch, whatever it is.</li>
+    <li><strong>Share the link.</strong> Each item automatically splits into individually claimable portions.</li>
+    <li><strong>People claim their share</strong> by name and phone number - no sign-up required.</li>
+  </ol>
+</article>
+
+<article>
+  <header><strong>Built for group orders</strong></header>
+  <ul>
+    <li>Large orders split fairly into individual portions, so nobody overpays or gets left out.</li>
+    <li>Participants don't need an account - just a name and phone number to claim their share.</li>
+    <li>Organisers stay in control: lock an event once it's full, and see exactly what to order.</li>
+    <li>Social by design, encourages people to join orders with people and get to know them bette.</li>
+  </ul>
 </article>
 {% endblock %}
