@@ -85,19 +85,24 @@
     {% endif %}
 
     {% if event.status == 'open' and order.available_count > 0 %}
-      <form method="post" action="{% url 'orders:join_order' order.public_id %}">
-        {% csrf_token %}
-        <fieldset role="group" class="join-fields">
-          <input type="text" name="claimant_name" placeholder="Your name" required>
-          <input type="tel" name="claimant_phone" placeholder="Phone number" required>
-          <select name="quantity" aria-label="Number of portions">
-            {% for n in order.available_range %}
-              <option value="{{ n }}">{{ n }} portion{{ n|pluralize }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit">Join ({{ order.available_count }} left)</button>
-        </fieldset>
-      </form>
+      <details class="claim-accordion">
+        <summary role="button" class="secondary outline">Claim a slice ({{ order.available_count }} left)</summary>
+        <form method="post" action="{% url 'orders:join_order' order.public_id %}">
+          {% csrf_token %}
+          <div class="grid">
+            <input type="text" name="claimant_name" placeholder="Your name" required>
+            <input type="tel" name="claimant_phone" placeholder="Phone number" required>
+          </div>
+          <div class="grid">
+            <select name="quantity" aria-label="Number of portions">
+              {% for n in order.available_range %}
+                <option value="{{ n }}">{{ n }} portion{{ n|pluralize }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit">Join</button>
+          </div>
+        </form>
+      </details>
     {% endif %}
   </article>
   {% empty %}

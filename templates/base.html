@@ -39,19 +39,36 @@
       margin-bottom: var(--pico-spacing);
     }
 
-    /* Pico's [role=group] (used by .join-fields) is nowrap by default, and
-       figure>table has no built-in horizontal scrolling - both overflow the
+    /* figure>table has no built-in horizontal scrolling, which overflows the
        viewport on narrow phone screens without this. */
     figure {
       overflow-x: auto;
     }
 
-    .join-fields {
-      flex-wrap: wrap;
+    /* Pico gives every input/select/submit-button its own margin-bottom,
+       which stacks unpredictably with .grid's own row-gap depending on which
+       child ends up "last" and how many columns .grid is currently rendering
+       (1 on mobile, more on desktop). Strip it from every grid child and put
+       one explicit, predictable gap on .grid itself instead. */
+    .grid > input,
+    .grid > select,
+    .grid > button {
+      margin-bottom: 0;
     }
-    .join-fields > input {
-      flex: 1 1 140px;
-      min-width: 0;
+    .grid {
+      margin-bottom: var(--pico-spacing);
+    }
+
+    /* This accordion sits as the last child of an <article>, which has its
+       own padding - a margin-bottom on <details> doesn't collapse through
+       that padding, so it just adds extra space inside the article's own
+       bottom padding. Drop it, and only add space below the button while
+       expanded (to separate it from the form), not while collapsed. */
+    .claim-accordion {
+      margin-bottom: 0;
+    }
+    .claim-accordion[open] > summary {
+      margin-bottom: var(--pico-spacing);
     }
 
     /* Pico anchors dropdown submenus to the trigger's left edge by default,
