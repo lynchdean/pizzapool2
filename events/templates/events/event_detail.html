@@ -47,7 +47,7 @@
       <strong>{% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}</strong>
       · {{ order.menu_item.name }}
       {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %}
-      ({{ order.status_label }})
+      {% if order.status_label %}({{ order.status_label }}){% endif %}
     </header>
 
     {% if order.claimants %}
@@ -83,6 +83,10 @@
         </table>
       </figure>
     {% endif %}
+
+    <div class="portion-tracker">
+      {% for _ in order.claimed_range %}✔️{% endfor %}{% for _ in order.available_range %}🍕{% endfor %}
+    </div>
 
     {% if event.status == 'open' and order.available_count > 0 %}
       <details class="claim-accordion">

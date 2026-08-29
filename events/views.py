@@ -42,6 +42,7 @@ def event_detail(request, org_slug, event_id):
         order.available_range = range(1, order.available_count + 1)
         order.is_fully_claimed = order.available_count == 0
         order.claimed_count = order.menu_item.portions_per_unit - order.available_count
+        order.claimed_range = range(1, order.claimed_count + 1)
 
         # A full order is guaranteed to proceed regardless of event status,
         # but it's only actually "Confirmed" once the event is finalized;
@@ -52,7 +53,9 @@ def event_detail(request, org_slug, event_id):
         elif is_finalized:
             order.status_label = "Incomplete, will not proceed"
         else:
-            order.status_label = f"{order.claimed_count}/{order.menu_item.portions_per_unit} claimed"
+            # Still open and not full - the "Claim a slice (N left)" button
+            # already shows the remaining count, so no header label needed.
+            order.status_label = None
 
         claimants = {}
         for portion in order.claimed_portions:
