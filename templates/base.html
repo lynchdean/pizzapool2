@@ -17,6 +17,23 @@
   <link rel="stylesheet" href="{% static 'css/pico.min.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
   <style>
+    /* Re-tint Pico's default accent colour (buttons, links, focus rings) to
+       the brand red. This overrides Pico's own :root defaults regardless of
+       light/dark theme, since this stylesheet loads after pico.min.css and
+       these are all plain :root rules - equal specificity, later wins. */
+    :root {
+      --pico-primary: #dc143b;
+      --pico-primary-background: #dc143b;
+      --pico-primary-border: var(--pico-primary-background);
+      --pico-primary-underline: rgba(220, 20, 60, 0.5);
+      --pico-primary-hover: #a80f2d;
+      --pico-primary-hover-background: #a80f2d;
+      --pico-primary-hover-border: var(--pico-primary-hover-background);
+      --pico-primary-hover-underline: var(--pico-primary-hover);
+      --pico-primary-focus: rgba(220, 20, 60, 0.375);
+      --pico-primary-inverse: #fff;
+    }
+
     #theme-toggle,
     #theme-toggle:hover,
     #theme-toggle:focus,

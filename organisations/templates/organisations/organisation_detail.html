@@ -8,9 +8,9 @@
 
 {% if can_manage %}
   <div class="action-bar">
-    <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary">Edit organisation</a>
-    <a href="{% url 'organisations:vendor_create' organisation.slug %}" role="button" class="secondary">Add vendor</a>
-    <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary">Add event</a>
+    <a href="{% url 'organisations:organisation_edit' organisation.slug %}" role="button" class="secondary outline">Edit organisation</a>
+    <a href="{% url 'organisations:vendor_create' organisation.slug %}" role="button" class="secondary outline">Add vendor</a>
+    <a href="{% url 'organisations:event_create' organisation.slug %}" role="button" class="secondary outline">Add event</a>
   </div>
 {% endif %}
 
