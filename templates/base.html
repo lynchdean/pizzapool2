@@ -102,6 +102,25 @@
     li.success { color: var(--pico-ins-color); }
     li.error { color: var(--pico-del-color); }
 
+    .site-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 2rem;
+      padding-top: var(--pico-spacing);
+      padding-bottom: var(--pico-spacing);
+      border-top: var(--pico-border-width) solid var(--pico-muted-border-color);
+      color: var(--pico-muted-color);
+    }
+    .site-footer a {
+      color: var(--pico-muted-color);
+    }
+    .site-footer a:hover {
+      color: var(--pico-color);
+    }
+
     .order-card {
       border-left: 4px solid #dc143b;
     }
@@ -353,6 +372,14 @@
 
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="container site-footer">
+    <small>&copy; {% now "Y" %} Dean Lynch</small>
+    <small>
+      <a href="https://github.com/lynchdean/pizzapool2">GitHub</a>
+      · <a href="https://buymeacoffee.com/deanlynch">Buy Me A Coffee</a>
+    </small>
+  </footer>
 
   <script>
     (function () {
