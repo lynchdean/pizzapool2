@@ -368,7 +368,7 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Margherita")
         self.assertContains(response, "Alice")
-        self.assertContains(response, "1 portion")
+        self.assertContains(response, "<td>1</td>", html=True)
 
     def test_join_and_start_forms_hidden_when_not_open(self):
         item = MenuItem.objects.create(
@@ -492,7 +492,7 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "Alice")
-        self.assertContains(response, "1 portion")
+        self.assertContains(response, "<td>1</td>", html=True)
         self.assertContains(response, "+353871234567")
 
     def test_cancel_control_shown_for_claimant_while_open(self):
@@ -507,6 +507,20 @@ class EventDetailViewTests(TestCase):
         self.assertContains(
             response, reverse("orders:unclaim_portion", args=[order.public_id])
         )
+
+    def test_cancel_form_prefills_the_correct_claimants_phone(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "+353871234567")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Bob", "+353879999999")
+
+        response = self.client.get(self.url)
+        content = response.content.decode()
+
+        self.assertIn('<input type="hidden" name="claimant_phone" value="+353871234567">', content)
+        self.assertIn('<input type="hidden" name="claimant_phone" value="+353879999999">', content)
 
     def test_cancel_control_hidden_once_not_open(self):
         item = MenuItem.objects.create(
@@ -533,7 +547,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "2 portions")
+        self.assertContains(response, "<td>2</td>", html=True)
 
     def test_fully_claimed_order_shows_full_indicator_while_open(self):
         item = MenuItem.objects.create(

@@ -12,11 +12,33 @@
     li.success { color: var(--pico-ins-color); }
     li.error { color: var(--pico-del-color); }
 
+    .text-right {
+      text-align: right;
+    }
+
     .action-bar {
       display: flex;
       align-items: center;
       gap: 0.5rem;
       margin-bottom: var(--pico-spacing);
+    }
+
+    button.icon-button {
+      width: auto;
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      line-height: 1;
+      margin-bottom: 0;
+    }
+
+    /* Without this, the quantity <select> and Join button (equal-width by
+       default in a role=group fieldset) wrap their text and grow taller
+       than the name/phone inputs, which then stretch to match. */
+    .join-fields > select,
+    .join-fields > button[type="submit"] {
+      flex: 0 0 auto;
+      width: auto;
+      white-space: nowrap;
     }
 
     .menu-item-fields {

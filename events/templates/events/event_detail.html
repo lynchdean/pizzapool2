@@ -41,44 +41,55 @@
   {% for order in orders %}
   <article>
     <header>
-      <strong>{{ order.menu_item.name }}</strong>
-      {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %} ·
-      {% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}
+      <strong>{% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}</strong>
+      · {{ order.menu_item.name }}
+      {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %}
       ({{ order.status_label }})
     </header>
 
     {% if order.claimants %}
-      <ul>
-        {% for claimant in order.claimants %}
-          <li>
-            {{ claimant.name }}: {{ claimant.quantity }} portion{{ claimant.quantity|pluralize }}
-            {% if claimant.phone %} ({{ claimant.phone }}){% endif %}
-            {% if event.status == 'open' %}
-              <details>
-                <summary>Cancel</summary>
-                <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}">
-                  {% csrf_token %}
-                  <fieldset role="group">
-                    <input type="tel" name="claimant_phone" placeholder="Confirm your phone number" required>
-                    <button type="submit">Confirm cancel</button>
-                  </fieldset>
-                </form>
-              </details>
-            {% endif %}
-          </li>
-        {% endfor %}
-      </ul>
+      <figure>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Portions</th>
+              {% if event.status == 'open' %}<th scope="col"></th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for claimant in order.claimants %}
+              <tr>
+                <td>{{ claimant.name }}</td>
+                <td>{{ claimant.phone }}</td>
+                <td>{{ claimant.quantity }}</td>
+                {% if event.status == 'open' %}
+                  <td class="text-right">
+                    <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}"
+                          style="display:inline" onsubmit="return confirm('Cancel this claim?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="claimant_phone" value="{{ claimant.phone }}">
+                      <button type="submit" class="secondary outline icon-button" aria-label="Cancel claim">×</button>
+                    </form>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </figure>
     {% endif %}
 
     {% if event.status == 'open' and order.available_count > 0 %}
       <form method="post" action="{% url 'orders:join_order' order.public_id %}">
         {% csrf_token %}
-        <fieldset role="group">
+        <fieldset role="group" class="join-fields">
           <input type="text" name="claimant_name" placeholder="Your name" required>
           <input type="tel" name="claimant_phone" placeholder="Phone number" required>
-          <select name="quantity">
+          <select name="quantity" aria-label="Number of portions">
             {% for n in order.available_range %}
-              <option value="{{ n }}">{{ n }}</option>
+              <option value="{{ n }}">{{ n }} portion{{ n|pluralize }}</option>
             {% endfor %}
           </select>
           <button type="submit">Join ({{ order.available_count }} left)</button>
