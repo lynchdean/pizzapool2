@@ -12,6 +12,10 @@ class Order(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="orders")
     menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT, related_name="orders")
     public_id = models.CharField(max_length=10, unique=True, editable=False, blank=True)
+    # Nullable at the DB level since orders created before this field existed
+    # have none - required at the form level for every new order instead
+    # (see orders/forms.py:StartOrderForm).
+    revolut_username = models.CharField(max_length=16, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

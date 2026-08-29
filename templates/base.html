@@ -429,5 +429,40 @@
       });
     })();
   </script>
+
+  <script>
+    (function () {
+      function costText(select) {
+        var price = parseFloat(select.dataset.price);
+        if (isNaN(price)) return 'Join';
+        var quantity = parseInt(select.value, 10) || 0;
+        var total = (price * quantity).toFixed(2);
+        return 'Join (' + select.dataset.currency + total + ')';
+      }
+
+      function updateButton(select) {
+        var grid = select.closest('.grid');
+        var button = grid && grid.querySelector('button[type="submit"]');
+        if (button) button.textContent = costText(select);
+      }
+
+      function updateAll() {
+        document.querySelectorAll('.quantity-select').forEach(updateButton);
+      }
+
+      // Event delegation on document, rather than binding to each select
+      // directly, since the event page's htmx polling periodically replaces
+      // these elements wholesale (hx-swap="outerHTML") - direct listeners
+      // would be lost on the next poll.
+      document.addEventListener('change', function (event) {
+        if (event.target.matches && event.target.matches('.quantity-select')) {
+          updateButton(event.target);
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', updateAll);
+      document.body.addEventListener('htmx:afterSwap', updateAll);
+    })();
+  </script>
 </body>
 </html>

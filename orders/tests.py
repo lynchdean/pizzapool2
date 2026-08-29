@@ -350,6 +350,7 @@ class StartOrderViewTests(TestCase):
             "claimant_name": "Alice",
             "claimant_phone": "0871234567",
             "quantity": 2,
+            "revolut_username": "alice92",
         }
 
     def test_get_redirects_without_creating_order(self):

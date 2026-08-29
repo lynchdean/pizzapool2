@@ -1,4 +1,5 @@
 from django import forms
+from django.core.validators import RegexValidator
 from phonenumber_field.formfields import PhoneNumberField
 
 
@@ -23,7 +24,15 @@ class JoinOrderForm(_ClaimFieldsMixin):
 
 
 class StartOrderForm(_ClaimFieldsMixin):
-    pass
+    # Revolut's own Revtag rules: 3-16 characters, letters/numbers only.
+    revolut_username = forms.CharField(
+        min_length=3, max_length=16, label="Your Revolut username",
+        help_text="So others can pay you back.",
+        validators=[RegexValidator(
+            regex=r'^[A-Za-z0-9]+$',
+            message="Revolut usernames can only contain letters and numbers.",
+        )],
+    )
 
 
 class UnclaimForm(forms.Form):

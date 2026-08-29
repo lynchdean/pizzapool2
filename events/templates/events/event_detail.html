@@ -49,6 +49,7 @@
       · {{ order.menu_item.name }}
       {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %}
       {% if order.status_label %}({{ order.status_label }}){% endif %}
+      {% if order.revolut_username %}· Revolut: {{ order.revolut_username }}{% endif %}
     </header>
 
     {% if order.claimants %}
@@ -99,7 +100,7 @@
             <input type="tel" name="claimant_phone" placeholder="Phone number" required>
           </div>
           <div class="grid">
-            <select name="quantity" aria-label="Number of portions">
+            <select name="quantity" aria-label="Number of portions" class="quantity-select" data-price="{{ order.price_per_portion|default:'' }}" data-currency="{{ event.organisation.currency_symbol }}">
               {% for n in order.available_range %}
                 <option value="{{ n }}">{{ n }} portion{{ n|pluralize }}</option>
               {% endfor %}
@@ -122,12 +123,13 @@
       <div class="grid">
         <input type="text" name="claimant_name" placeholder="Your name" required>
         <input type="tel" name="claimant_phone" placeholder="Phone number" required>
+        <input type="text" name="revolut_username" placeholder="Your Revolut username" minlength="3" maxlength="16" pattern="[A-Za-z0-9]+" title="3-16 characters, letters and numbers only" required>
       </div>
       <div class="grid">
         <select name="menu_item_id" required>
           <option value="" disabled selected>Choose a menu item</option>
           {% for item in active_menu_items %}
-            <option value="{{ item.id }}">{{ item.name }}</option>
+            <option value="{{ item.id }}">{{ item.name }}{% if item.price_per_portion %} ({{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/portion){% endif %}</option>
           {% endfor %}
         </select>
         <input type="number" name="quantity" min="1" placeholder="Portions for yourself" required>

@@ -380,7 +380,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertNotContains(response, "Join (")
+        self.assertNotContains(response, '<details class="claim-accordion"')
         self.assertNotContains(response, "Start a new order")
 
     def test_menu_item_with_no_orders_offers_start_section(self):
@@ -421,8 +421,8 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, f'<option value="{margherita.id}">Margherita</option>')
-        self.assertContains(response, f'<option value="{pepperoni.id}">Pepperoni</option>')
+        self.assertContains(response, f'<option value="{margherita.id}">Margherita (€2.50/portion)</option>')
+        self.assertContains(response, f'<option value="{pepperoni.id}">Pepperoni (€3.00/portion)</option>')
         self.assertNotContains(response, "Discontinued Pizza")
 
     def test_inactive_menu_item_with_existing_order_still_joinable_no_start_button(self):
@@ -560,7 +560,7 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Full")
         self.assertNotContains(response, "Confirmed")
-        self.assertNotContains(response, "Join (")
+        self.assertNotContains(response, '<details class="claim-accordion"')
 
     def test_partially_claimed_order_shows_no_status_label_while_open(self):
         # The "Claim a slice (N left)" accordion button already shows the

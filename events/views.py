@@ -77,6 +77,13 @@ def event_detail(request, org_slug, event_id):
             order.price_per_portion = None
 
     active_menu_items = list(event.vendor.menu_items.filter(is_active=True).order_by('name'))
+    for item in active_menu_items:
+        if item.portions_per_unit:
+            item.price_per_portion = (
+                item.price / item.portions_per_unit
+            ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        else:
+            item.price_per_portion = None
 
     order_summary = None
     order_total = None

@@ -83,7 +83,7 @@ def claim_portions_by_quantity(event, requests, claimant_name, claimant_phone=No
     return claimed_portions
 
 
-def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_phone=None):
+def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_phone=None, revolut_username=None):
     """
     Atomically creates a new Order for menu_item within event and immediately
     claims `quantity` of its own freshly-generated portions for the starter.
@@ -97,7 +97,9 @@ def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_ph
         if locked_event.status != "open":
             raise EventNotOpenError(locked_event.pk, locked_event.status)
 
-        order = Order.objects.create(event=locked_event, menu_item=menu_item)
+        order = Order.objects.create(
+            event=locked_event, menu_item=menu_item, revolut_username=revolut_username or None,
+        )
         claimed = claim_portions_by_quantity(
             locked_event, [(order.id, quantity)], claimant_name, claimant_phone
         )

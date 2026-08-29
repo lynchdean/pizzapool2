@@ -143,6 +143,7 @@ def start_order_view(request, event_id):
             form.cleaned_data['quantity'],
             form.cleaned_data['claimant_name'],
             form.cleaned_data['claimant_phone'],
+            form.cleaned_data['revolut_username'],
         )
         messages.success(
             request,
