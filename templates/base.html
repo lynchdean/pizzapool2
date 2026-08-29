@@ -9,6 +9,33 @@
   <link rel="stylesheet" href="{% static 'css/pico.min.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
   <style>
+    @font-face {
+      font-family: 'Montserrat';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url('{% static "fonts/montserrat-600.woff2" %}') format('woff2');
+    }
+
+    .brand-link,
+    .brand-link:hover,
+    .brand-link:focus,
+    .brand-link:active {
+      text-decoration: none !important;
+    }
+    .brand-wordmark {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 1.25rem;
+      letter-spacing: 0.25rem;
+      color: #dc143b;
+    }
+    .brand-link:hover .brand-wordmark,
+    .brand-link:focus .brand-wordmark,
+    .brand-link:active .brand-wordmark {
+      color: #dc143b;
+    }
+
     li.success { color: var(--pico-ins-color); }
     li.error { color: var(--pico-del-color); }
 
@@ -183,7 +210,7 @@
 <body>
   <nav class="container">
     <ul>
-      <li><a href="{% url 'organisations:home' %}"><strong>pizzapool</strong></a></li>
+      <li><a href="{% url 'organisations:home' %}" class="brand-link"><span class="brand-wordmark">pizzapool</span></a></li>
     </ul>
     <ul>
       {% if user.is_authenticated %}
