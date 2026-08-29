@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from .forms import OrganisationForm
 from .models import Organisation, OrganisationMembership
@@ -36,10 +37,14 @@ def organisation_detail(request, org_slug):
     organisation = get_object_or_404(Organisation, slug=org_slug)
     can_manage = user_can_access_organisation(request.user, organisation)
 
+    events = organisation.events.select_related('vendor')
+    now = timezone.now()
+
     return render(request, 'organisations/organisation_detail.html', {
         'organisation': organisation,
         'vendors': organisation.vendors.annotate(menu_item_count=Count('menu_items')),
-        'events': organisation.events.select_related('vendor').order_by('deadline'),
+        'upcoming_events': events.filter(deadline__gte=now).order_by('deadline'),
+        'past_events': events.filter(deadline__lt=now).order_by('-deadline'),
         'can_manage': can_manage,
     })
 

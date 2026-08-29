@@ -43,8 +43,8 @@
 {% endif %}
 
 <article>
-  <header><strong>Events</strong></header>
-  {% if events %}
+  <header><strong>Upcoming events</strong></header>
+  {% if upcoming_events %}
     <figure>
       <table>
         <thead>
@@ -56,7 +56,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for event in events %}
+          {% for event in upcoming_events %}
             <tr>
               <td><a href="{% url 'events:event_detail' organisation.slug event.public_id %}">{{ event.name }}</a></td>
               <td>{{ event.vendor.name }}</td>
@@ -68,7 +68,37 @@
       </table>
     </figure>
   {% else %}
-    <p>No events yet.</p>
+    <p>No upcoming events.</p>
+  {% endif %}
+</article>
+
+<article>
+  <header><strong>Past events</strong></header>
+  {% if past_events %}
+    <figure>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Vendor</th>
+            <th scope="col">Status</th>
+            <th scope="col">Deadline</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in past_events %}
+            <tr>
+              <td><a href="{% url 'events:event_detail' organisation.slug event.public_id %}">{{ event.name }}</a></td>
+              <td>{{ event.vendor.name }}</td>
+              <td>{{ event.get_status_display }}</td>
+              <td>{{ event.deadline }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </figure>
+  {% else %}
+    <p>No past events.</p>
   {% endif %}
 </article>
 {% endblock %}
