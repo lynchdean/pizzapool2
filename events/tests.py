@@ -343,7 +343,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertNotContains(response, '<button type="submit" class="secondary outline">Delete</button>')
+        self.assertNotContains(response, 'aria-label="Delete order"')
 
     def test_delete_order_button_hidden_for_organiser(self):
         item = MenuItem.objects.create(
@@ -358,7 +358,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertNotContains(response, '<button type="submit" class="secondary outline">Delete</button>')
+        self.assertNotContains(response, 'aria-label="Delete order"')
 
     def test_delete_order_button_shown_to_owner(self):
         item = MenuItem.objects.create(
@@ -373,7 +373,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, '<button type="submit" class="secondary outline">Delete</button>')
+        self.assertContains(response, 'aria-label="Delete order"')
 
     def test_delete_order_button_shown_to_superuser(self):
         item = MenuItem.objects.create(
@@ -387,7 +387,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, '<button type="submit" class="secondary outline">Delete</button>')
+        self.assertContains(response, 'aria-label="Delete order"')
 
     def test_looking_up_by_raw_integer_pk_returns_404(self):
         url = reverse("events:event_detail", args=[self.organisation.slug, str(self.event.pk)])

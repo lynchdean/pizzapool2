@@ -10,10 +10,16 @@
     <button type="submit">Save</button>
   </form>
   {% if event %}
-    <a href="{% url 'events:event_detail' organisation.slug event.public_id %}">Cancel</a>
+    <a href="{% url 'events:event_detail' organisation.slug event.public_id %}" class="icon-text">
   {% else %}
-    <a href="{% url 'organisations:organisation_detail' organisation.slug %}">Cancel</a>
+    <a href="{% url 'organisations:organisation_detail' organisation.slug %}" class="icon-text">
   {% endif %}
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Cancel
+  </a>
 </article>
 
 {% if event %}

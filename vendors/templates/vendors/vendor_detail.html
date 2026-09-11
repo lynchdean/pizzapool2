@@ -7,8 +7,19 @@
 </div>
 
 <div class="action-bar">
-  <a href="{% url 'organisations:vendor_edit' org_slug vendor.id %}" role="button" class="secondary outline">Edit vendor</a>
-  <a href="{% url 'organisations:organisation_detail' org_slug %}" role="button" class="secondary outline">Back to organisation</a>
+  <a href="{% url 'organisations:vendor_edit' org_slug vendor.id %}" role="button" class="secondary outline icon-text">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+    </svg>
+    Edit
+  </a>
+  <a href="{% url 'organisations:organisation_detail' org_slug %}" role="button" class="secondary outline icon-text">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Back to organisation
+  </a>
 </div>
 
 <article>
@@ -51,7 +62,14 @@
         <form method="post" action="{% url 'organisations:menu_item_delete' org_slug vendor.id item.id %}"
               onsubmit="return confirm('Delete this menu item?');">
           {% csrf_token %}
-          <button type="submit" class="secondary outline">Delete</button>
+          <button type="submit" class="secondary outline icon-button" aria-label="Delete menu item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
         </form>
       </div>
     </details>
@@ -65,7 +83,13 @@
   <form method="post" action="{% url 'organisations:menu_item_create' org_slug vendor.id %}">
     {% csrf_token %}
     {{ new_item_form.as_p }}
-    <button type="submit">Add</button>
+    <button type="submit" class="icon-text">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add
+    </button>
   </form>
 </article>
 {% endblock %}

@@ -182,9 +182,6 @@
     .order-card > header form button {
       width: auto;
       margin-bottom: 0;
-      white-space: nowrap;
-      padding: 0.25rem 0.6rem;
-      font-size: 0.8rem;
     }
     /* One line of text per claimant instead of a <table> - a rigid
        multi-column table has no good way to reflow on narrow screens and
@@ -332,6 +329,21 @@
       line-height: 1;
       margin-bottom: 0;
     }
+    /* Inline SVGs pick up a few px of baseline whitespace by default -
+       display:block on the svg itself removes it, keeping the icon
+       centred inside these small buttons. */
+    .icon-button svg {
+      display: block;
+    }
+
+    /* For buttons/links that keep their text and just gain an icon
+       alongside it (Edit/Add/Back/Cancel) - governs icon+label alignment
+       only, doesn't touch Pico's own padding/width on the button itself. */
+    .icon-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
 
     /* Without this, the quantity <select> and Join button (equal-width by
        default in a role=group fieldset) wrap their text and grow taller
@@ -367,6 +379,14 @@
       flex: 0 0 auto;
       width: auto;
       margin-bottom: 0;
+    }
+    /* .icon-button's own compact padding (meant for standalone icon-only
+       controls) looks stunted next to the normal-height Save button here -
+       match Save's height while staying narrow/icon-only, not stretched
+       to Save's width. */
+    .menu-item-actions .icon-button {
+      padding-top: var(--pico-form-element-spacing-vertical);
+      padding-bottom: var(--pico-form-element-spacing-vertical);
     }
     .menu-item-actions form {
       margin-bottom: 0;
