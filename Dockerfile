@@ -2,6 +2,13 @@ FROM python:3.14-slim
 
 WORKDIR /app
 
+# curl: python:3.14-slim ships neither curl nor wget, but Coolify's container
+# healthcheck runs one of them *inside* the container to hit /healthz/ - so
+# without this the healthcheck can never pass, regardless of whether the app
+# itself is healthy.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
