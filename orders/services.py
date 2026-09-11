@@ -107,24 +107,13 @@ def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_ph
     return order, claimed
 
 
-class OrderHasClaimedPortionsError(Exception):
-    def __init__(self, order_id, claimed_count):
-        self.order_id = order_id
-        self.claimed_count = claimed_count
-        super().__init__(f"Order {order_id} has {claimed_count} claimed portion(s); refusing to delete.")
-
-
+# Unlike delete_event, this has no claimed-portions guard: start_order_and_claim
+# always claims at least one portion for the starter, so every order has a
+# claim by design - blocking on that would make this feature unusable. The
+# safety net here is the permission gate (owner/superuser only) plus the
+# confirm() dialog in the template, not a data-integrity check.
 def delete_order(order):
-    with transaction.atomic():
-        locked_order = Order.objects.select_for_update().get(pk=order.pk)
-        claimed_count = Portion.objects.select_for_update().filter(
-            order=locked_order, claimant_name__isnull=False
-        ).count()
-
-        if claimed_count:
-            raise OrderHasClaimedPortionsError(locked_order.pk, claimed_count)
-
-        locked_order.delete()
+    order.delete()
 
 
 def unclaim_portions(event, order_id, claimant_phone):

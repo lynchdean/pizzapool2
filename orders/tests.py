@@ -16,7 +16,6 @@ from .services import (
     ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
-    OrderHasClaimedPortionsError,
 )
 
 
@@ -481,27 +480,18 @@ class DeleteOrderServiceTests(TestCase):
 
         self.assertFalse(Order.objects.filter(pk=order.pk).exists())
 
-    def test_delete_order_raises_when_any_portion_claimed(self):
-        order = Order.objects.create(event=self.event, menu_item=self.menu_item)
-        portion = order.portions.first()
-        portion.claimant_name = "Alice"
-        portion.save()
-
-        with self.assertRaises(OrderHasClaimedPortionsError):
-            delete_order(order)
-
-        self.assertTrue(Order.objects.filter(pk=order.pk).exists())
-
-    def test_delete_order_raises_with_correct_claimed_count(self):
+    def test_delete_order_removes_order_even_with_claimed_portions(self):
+        # No claimed-portions guard here, unlike delete_event: every order
+        # has at least the starter's own claim by the time it exists, so
+        # blocking on that would make deletion impossible in practice.
         order = Order.objects.create(event=self.event, menu_item=self.menu_item)
         for portion in list(order.portions.all())[:2]:
             portion.claimant_name = "Alice"
             portion.save()
 
-        with self.assertRaises(OrderHasClaimedPortionsError) as ctx:
-            delete_order(order)
+        delete_order(order)
 
-        self.assertEqual(ctx.exception.claimed_count, 2)
+        self.assertFalse(Order.objects.filter(pk=order.pk).exists())
 
 
 class DeleteOrderViewTests(TestCase):
@@ -551,7 +541,7 @@ class DeleteOrderViewTests(TestCase):
 
         self.assertFalse(Order.objects.filter(pk=self.order.pk).exists())
 
-    def test_post_refuses_to_delete_when_portions_claimed(self):
+    def test_post_deletes_order_even_with_claimed_portions(self):
         self.client.force_login(self.owner)
         portion = self.order.portions.first()
         portion.claimant_name = "Alice"
@@ -559,8 +549,8 @@ class DeleteOrderViewTests(TestCase):
 
         response = self.client.post(self.url, follow=True)
 
-        self.assertTrue(Order.objects.filter(pk=self.order.pk).exists())
-        self.assertContains(response, "already been claimed")
+        self.assertFalse(Order.objects.filter(pk=self.order.pk).exists())
+        self.assertContains(response, "Order deleted.")
 
     def test_post_forbidden_for_organiser(self):
         organiser = User.objects.create_user(username="organiser", password="pw")

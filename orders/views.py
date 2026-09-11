@@ -16,7 +16,6 @@ from .services import (
     ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
-    OrderHasClaimedPortionsError,
 )
 
 
@@ -173,10 +172,7 @@ def delete_order_view(request, order_id):
     if not user_is_organisation_owner(request.user, event.organisation):
         raise PermissionDenied
 
-    try:
-        delete_order(order)
-        messages.success(request, "Order deleted.")
-    except OrderHasClaimedPortionsError as e:
-        messages.error(request, f"Can't delete: {e.claimed_count} portion(s) have already been claimed.")
+    delete_order(order)
+    messages.success(request, "Order deleted.")
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
