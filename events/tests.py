@@ -113,6 +113,7 @@ class EventEditViewTests(TestCase):
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now() + timezone.timedelta(days=1),
+            status='open',
         )
         self.item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
@@ -180,6 +181,7 @@ class DeleteEventServiceTests(TestCase):
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
 
     def test_delete_event_removes_event_when_no_claims(self):
@@ -234,6 +236,7 @@ class EventDeleteViewTests(TestCase):
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.url = reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
         self.client.force_login(self.member)
@@ -282,6 +285,7 @@ class EventDetailViewTests(TestCase):
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
 
@@ -368,7 +372,7 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Margherita")
         self.assertContains(response, "Alice")
-        self.assertContains(response, "<td>1</td>", html=True)
+        self.assertContains(response, "×1")
 
     def test_join_and_start_forms_hidden_when_not_open(self):
         item = MenuItem.objects.create(
@@ -421,8 +425,8 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, f'<option value="{margherita.id}">Margherita (€2.50/portion)</option>')
-        self.assertContains(response, f'<option value="{pepperoni.id}">Pepperoni (€3.00/portion)</option>')
+        self.assertContains(response, f'<option value="{margherita.id}" data-portions="4" data-price="2.50">Margherita (€2.50/portion, €10.00 total)</option>')
+        self.assertContains(response, f'<option value="{pepperoni.id}" data-portions="4" data-price="3.00">Pepperoni (€3.00/portion, €12.00 total)</option>')
         self.assertNotContains(response, "Discontinued Pizza")
 
     def test_inactive_menu_item_with_existing_order_still_joinable_no_start_button(self):
@@ -492,7 +496,7 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "Alice")
-        self.assertContains(response, "<td>1</td>", html=True)
+        self.assertContains(response, "×1")
         self.assertContains(response, "+353871234567")
 
     def test_cancel_control_shown_for_claimant_while_open(self):
@@ -547,7 +551,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "<td>2</td>", html=True)
+        self.assertContains(response, "×2")
 
     def test_fully_claimed_order_shows_full_indicator_while_open(self):
         item = MenuItem.objects.create(
@@ -577,9 +581,9 @@ class EventDetailViewTests(TestCase):
         self.assertNotContains(response, "will not proceed")
 
     def test_partially_claimed_order_still_shows_no_status_label_when_locked(self):
-        # 'locked' isn't necessarily "closed": it may be used to prep an
-        # event before it opens, so it shouldn't claim a partial order is
-        # doomed the way 'submitted'/'completed' can.
+        # 'locked' is a reusable pause (prepping before opening, or a
+        # temporary pause), not a one-way transition, so it shouldn't claim
+        # a partial order is doomed the way 'submitted' (finalized) can.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
@@ -623,8 +627,8 @@ class EventDetailViewTests(TestCase):
         self.assertContains(response, "no longer open for claims")
 
     def test_fully_claimed_order_still_shows_full_when_locked(self):
-        # 'locked' isn't finalized (it may just be prepping the event before
-        # it opens), so a full order shouldn't jump to "Confirmed" yet either.
+        # 'locked' isn't finalized (it's a reusable pause, not a one-way
+        # transition), so a full order shouldn't jump to "Confirmed" yet either.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
         )
@@ -665,8 +669,11 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
         content = response.content.decode()
+        # Scoped past the menu-options summary, which lists items
+        # alphabetically and would otherwise put "Apple Pizza" first.
+        live_content = content[content.index('id="live-content"'):]
 
-        self.assertLess(content.index("Zebra Pizza"), content.index("Apple Pizza"))
+        self.assertLess(live_content.index("Zebra Pizza"), live_content.index("Apple Pizza"))
 
     def test_no_orders_shows_empty_message(self):
         response = self.client.get(self.url)
@@ -699,6 +706,7 @@ class EventOrderSummaryTests(TestCase):
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         full_order_1 = Order.objects.create(event=self.event, menu_item=self.margherita)
         full_order_2 = Order.objects.create(event=self.event, menu_item=self.margherita)
@@ -719,14 +727,16 @@ class EventOrderSummaryTests(TestCase):
         self.assertNotContains(response, "Pepperoni × ")
         self.assertContains(response, "Total: €20.00")
 
-    def test_summary_shown_when_completed(self):
-        self.event.status = "completed"
+    def test_summary_absent_when_closed(self):
+        # 'closed' means the order window has passed and it's staged to
+        # send to the vendor, but hasn't actually been submitted yet - it
+        # isn't finalized, so no summary yet either (matches 'locked').
+        self.event.status = "closed"
         self.event.save()
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Order summary")
-        self.assertContains(response, "Total: €20.00")
+        self.assertNotContains(response, "Order summary")
 
     def test_summary_absent_when_open(self):
         response = self.client.get(self.url)
@@ -770,10 +780,12 @@ class EventPublicIdTests(TestCase):
         event1 = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         event2 = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Saturday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
 
         self.assertNotEqual(event1.public_id, event2.public_id)
@@ -784,6 +796,7 @@ class EventPublicIdTests(TestCase):
         event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         original_public_id = event.public_id
 

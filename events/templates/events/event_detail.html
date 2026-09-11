@@ -16,6 +16,17 @@
 </div>
 {% endif %}
 
+{% if active_menu_items %}
+<details class="menu-options">
+  <summary role="button" class="secondary outline">Menu options ({{ active_menu_items|length }})</summary>
+  <ul>
+    {% for item in active_menu_items %}
+      <li>{{ item.name }}{% if item.price_per_portion %}, {{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/portion, {{ event.organisation.currency_symbol }}{{ item.price }} total{% endif %}</li>
+    {% endfor %}
+  </ul>
+</details>
+{% endif %}
+
 {% if order_summary %}
 <article>
   <header><strong>Order summary</strong></header>
@@ -47,51 +58,37 @@
     <header>
       <strong>{% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}</strong>
       · {{ order.menu_item.name }}
-      {% if order.price_per_portion %}({{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion){% endif %}
-      {% if order.status_label %}({{ order.status_label }}){% endif %}
-      {% if order.revolut_username %}· Revolut: {{ order.revolut_username }}{% endif %}
+      <div class="order-card-meta">
+        {% if order.price_per_portion %}{{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion{% endif %}
+        {% if order.status_label %}· {{ order.status_label }}{% endif %}
+        {% if order.revolut_username %}· Revolut: {{ order.revolut_username }}{% endif %}
+      </div>
     </header>
 
     {% if order.claimants %}
-      <figure>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Phone</th>
-              <th scope="col">Portions</th>
-              {% if event.status == 'open' %}<th scope="col"></th>{% endif %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for claimant in order.claimants %}
-              <tr>
-                <td>{{ claimant.name }}</td>
-                <td>{{ claimant.phone }}</td>
-                <td>{{ claimant.quantity }}</td>
-                {% if event.status == 'open' %}
-                  <td class="text-right">
-                    <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}"
-                          style="display:inline" onsubmit="return confirm('Cancel this claim?');">
-                      {% csrf_token %}
-                      <input type="hidden" name="claimant_phone" value="{{ claimant.phone }}">
-                      <button type="submit" class="secondary outline icon-button" aria-label="Cancel claim">×</button>
-                    </form>
-                  </td>
-                {% endif %}
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </figure>
+      <ul class="claimant-list">
+        {% for claimant in order.claimants %}
+          <li>
+            <span>{{ claimant.name }} · {{ claimant.phone }} · ×{{ claimant.quantity }}</span>
+            {% if event.status == 'open' %}
+              <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}"
+                    style="display:inline" onsubmit="return confirm('Cancel this claim?');">
+                {% csrf_token %}
+                <input type="hidden" name="claimant_phone" value="{{ claimant.phone }}">
+                <button type="submit" class="secondary outline icon-button" aria-label="Cancel claim">×</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
     {% endif %}
 
     <div class="portion-tracker">
-      {% for _ in order.claimed_range %}<img src="{% static 'img/logo-grey.png' %}" alt="" class="claimed-icon">{% endfor %}{% for _ in order.available_range %}<img src="{% static 'img/logo-headless-red.png' %}" alt="" class="pizza-icon">{% endfor %}
+      {% for _ in order.claimed_range %}<img src="{% static 'img/logo-red.png' %}" alt="" class="claimed-icon">{% endfor %}{% for _ in order.available_range %}<img src="{% static 'img/logo-headless-grey.png' %}" alt="" class="pizza-icon">{% endfor %}
     </div>
 
     {% if event.status == 'open' and order.available_count > 0 %}
-      <details class="claim-accordion">
+      <details class="claim-accordion" id="claim-accordion-{{ order.public_id }}">
         <summary role="button" class="secondary outline">Claim a slice ({{ order.available_count }} left)</summary>
         <form method="post" action="{% url 'orders:join_order' order.public_id %}">
           {% csrf_token %}
@@ -105,7 +102,7 @@
                 <option value="{{ n }}">{{ n }} portion{{ n|pluralize }}</option>
               {% endfor %}
             </select>
-            <button type="submit">Join</button>
+            <button type="submit" data-label="Join">Join</button>
           </div>
         </form>
       </details>
@@ -126,15 +123,17 @@
         <input type="text" name="revolut_username" placeholder="Your Revolut username" minlength="3" maxlength="16" pattern="[A-Za-z0-9]+" title="3-16 characters, letters and numbers only" required>
       </div>
       <div class="grid">
-        <select name="menu_item_id" required>
+        <select name="menu_item_id" class="menu-item-select" required>
           <option value="" disabled selected>Choose a menu item</option>
           {% for item in active_menu_items %}
-            <option value="{{ item.id }}">{{ item.name }}{% if item.price_per_portion %} ({{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/portion){% endif %}</option>
+            <option value="{{ item.id }}" data-portions="{{ item.portions_per_unit }}" data-price="{{ item.price_per_portion|default:'' }}">{{ item.name }} ({% if item.price_per_portion %}{{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/portion, {% endif %}{{ event.organisation.currency_symbol }}{{ item.price }} total)</option>
           {% endfor %}
         </select>
-        <input type="number" name="quantity" min="1" placeholder="Portions for yourself" required>
+        <select name="quantity" aria-label="Number of portions to reserve for yourself" class="portions-select quantity-select" data-currency="{{ event.organisation.currency_symbol }}" required disabled>
+          <option value="" disabled selected>Choose a menu item first</option>
+        </select>
       </div>
-      <button type="submit">Start order</button>
+      <button type="submit" data-label="Start order">Start order</button>
     </form>
   </article>
   {% endif %}

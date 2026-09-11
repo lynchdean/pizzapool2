@@ -140,11 +140,62 @@
       color: var(--pico-color);
     }
 
+    /* display:flex + gap for spacing between this card's direct children
+       (header/toggle, portion-tracker, claim-accordion) instead of relying
+       on margin collapse between them - margin collapse between block
+       siblings depends on nothing breaking it (padding, borders, differing
+       values in a collapse chain through nested elements), which kept
+       producing inconsistent/doubled-up spacing here. gap is unconditional:
+       exactly one fixed value, no ambiguity. */
     .order-card {
+      display: flex;
+      flex-direction: column;
+      gap: var(--pico-spacing);
       border-left: 4px solid #dc143b;
+    }
+
+    /* Bottom margin is 0: <header> is a direct flex child of .order-card,
+       so its own margin-bottom would double up with .order-card's flex
+       gap (which provides that spacing instead). */
+    .order-card > header {
+      margin: calc(var(--pico-block-spacing-vertical) * -1) calc(var(--pico-block-spacing-horizontal) * -1) 0;
+      padding: calc(var(--pico-block-spacing-vertical) * .66) var(--pico-block-spacing-horizontal);
+      background-color: var(--pico-card-sectioning-background-color);
+      border-bottom: var(--pico-border-width) solid var(--pico-card-border-color);
+      border-top-left-radius: var(--pico-border-radius);
+      border-top-right-radius: var(--pico-border-radius);
     }
     .order-card > header strong {
       color: #dc143b;
+    }
+    /* One line of text per claimant instead of a <table> - a rigid
+       multi-column table has no good way to reflow on narrow screens and
+       was getting cut off on mobile. margin:0 since this is a direct flex
+       child of .order-card, relying on its flex gap for spacing rather
+       than its own margin (the pattern used throughout this card). */
+    .claimant-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .claimant-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      border-bottom: var(--pico-border-width) solid var(--pico-muted-border-color);
+    }
+    .claimant-list li:last-child {
+      border-bottom: none;
+    }
+    /* Forced onto its own line unconditionally (not just wrapped when
+       narrow) so the card header reads the same on mobile and desktop,
+       rather than reflowing differently depending on available width. */
+    .order-card-meta {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--pico-muted-color);
     }
 
     .pizza-icon,
@@ -155,6 +206,8 @@
       transform: rotate(30deg);
     }
 
+    /* No margin of its own - it's a direct flex child of .order-card now,
+       which provides consistent spacing on both sides via its own gap. */
     .portion-tracker {
       display: flex;
       flex-wrap: wrap;
@@ -212,13 +265,12 @@
       margin-bottom: var(--pico-spacing);
     }
 
-    /* This accordion sits as the last child of an <article>, which has its
-       own padding - a margin-bottom on <details> doesn't collapse through
-       that padding, so it just adds extra space inside the article's own
-       bottom padding. Drop it, and only add space below the button while
-       expanded (to separate it from the form), not while collapsed. */
+    /* No margin of its own either, for the same reason as .portion-tracker -
+       .order-card's flex gap handles spacing above it, and margin-bottom
+       stays 0 since when this is absent, .portion-tracker is naturally the
+       last flex child with nothing after it needing a gap. */
     .claim-accordion {
-      margin-top: var(--pico-spacing);
+      margin-top: 0;
       margin-bottom: 0;
     }
     .claim-accordion[open] > summary {
@@ -432,18 +484,19 @@
 
   <script>
     (function () {
-      function costText(select) {
+      function costText(select, button) {
+        var label = button.dataset.label;
         var price = parseFloat(select.dataset.price);
-        if (isNaN(price)) return 'Join';
+        if (isNaN(price)) return label;
         var quantity = parseInt(select.value, 10) || 0;
         var total = (price * quantity).toFixed(2);
-        return 'Join (' + select.dataset.currency + total + ')';
+        return label + ' (' + select.dataset.currency + total + ')';
       }
 
       function updateButton(select) {
-        var grid = select.closest('.grid');
-        var button = grid && grid.querySelector('button[type="submit"]');
-        if (button) button.textContent = costText(select);
+        var form = select.closest('form');
+        var button = form && form.querySelector('button[type="submit"]');
+        if (button) button.textContent = costText(select, button);
       }
 
       function updateAll() {
@@ -462,6 +515,93 @@
 
       document.addEventListener('DOMContentLoaded', updateAll);
       document.body.addEventListener('htmx:afterSwap', updateAll);
+    })();
+  </script>
+
+  <script>
+    (function () {
+      // The new-order quantity choices depend on which menu item is
+      // selected (each has its own portions_per_unit), so the options can't
+      // be rendered server-side until then - populate them on the fly instead
+      // of allowing a free-text number that could exceed the item's max.
+      function populatePortionsSelect(menuSelect) {
+        var grid = menuSelect.closest('.grid');
+        var portionsSelect = grid && grid.querySelector('.portions-select');
+        if (!portionsSelect) return;
+
+        var chosen = menuSelect.options[menuSelect.selectedIndex];
+        var max = chosen && parseInt(chosen.dataset.portions, 10);
+        portionsSelect.dataset.price = (chosen && chosen.dataset.price) || '';
+
+        portionsSelect.innerHTML = '';
+        if (!max) {
+          var placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.disabled = true;
+          placeholder.selected = true;
+          placeholder.textContent = 'Choose a menu item first';
+          portionsSelect.appendChild(placeholder);
+          portionsSelect.disabled = true;
+          portionsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          return;
+        }
+
+        for (var n = 1; n <= max; n++) {
+          var option = document.createElement('option');
+          option.value = n;
+          option.textContent = n === max
+            ? 'Reserve all ' + n + ' portions'
+            : 'Reserve ' + n + ' portion' + (n === 1 ? '' : 's');
+          portionsSelect.appendChild(option);
+        }
+        portionsSelect.disabled = false;
+        // Repopulating a <select> doesn't fire its own 'change' event, so
+        // the price-display listener above wouldn't otherwise know the
+        // price/quantity context just changed with the new menu item.
+        portionsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      document.addEventListener('change', function (event) {
+        if (event.target.matches && event.target.matches('.menu-item-select')) {
+          populatePortionsSelect(event.target);
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.menu-item-select').forEach(populatePortionsSelect);
+      });
+      document.body.addEventListener('htmx:afterSwap', function () {
+        document.querySelectorAll('.menu-item-select').forEach(populatePortionsSelect);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      // The event page polls every 15s and swaps in fresh server HTML,
+      // which always renders every <details> closed - the server has no
+      // idea what's expanded client-side. Rather than pausing polling
+      // whenever something's open (which would leave a forgotten expanded
+      // card stuck showing stale data indefinitely), just remember which
+      // ones were open by id and re-open the matching elements after each
+      // swap, so polling keeps running and the user's view doesn't reset.
+      var openIds = [];
+
+      document.body.addEventListener('htmx:beforeSwap', function (event) {
+        if (!event.target || event.target.id !== 'live-content') return;
+        openIds = Array.prototype.slice
+          .call(document.querySelectorAll('#live-content details[open][id]'))
+          .map(function (details) { return details.id; });
+      });
+
+      document.body.addEventListener('htmx:afterSwap', function () {
+        if (!openIds.length) return;
+        openIds.forEach(function (id) {
+          var details = document.getElementById(id);
+          if (details) details.open = true;
+        });
+        openIds = [];
+      });
     })();
   </script>
 </body>

@@ -26,10 +26,11 @@ def event_detail(request, org_slug, event_id):
 
     portion_qs = Portion.objects.filter(claimant_name__isnull=False).order_by('claimed_at', 'id')
 
-    # 'locked' isn't necessarily "closed": it can also be used to prep an
-    # event before it opens, so only 'submitted'/'completed' are treated as
-    # genuinely final (no more claims coming, and orders/portions locked in).
-    is_finalized = event.status in ('submitted', 'completed')
+    # 'locked' and 'closed' both mean "not accepting claims right now", but
+    # neither is final: 'locked' can flip back to 'open' (it's a reusable
+    # pause), and 'closed' is just staged to send to the vendor, not yet
+    # sent. Only 'submitted' means the order has actually gone out.
+    is_finalized = event.status == 'submitted'
 
     orders = (
         Order.objects.filter(event=event)

@@ -4,14 +4,25 @@
 <h1>My organisations</h1>
 <article>
   {% if organisations %}
-    <ul>
-      {% for item in organisations %}
-        <li>
-          <a href="{% url 'organisations:organisation_detail' item.organisation.slug %}">{{ item.organisation.name }}</a>
-          {% if item.role %}({{ item.role }}){% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+    <figure>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in organisations %}
+            <tr>
+              <td>
+                <a href="{% url 'organisations:organisation_detail' item.organisation.slug %}">{{ item.organisation.name }}</a>
+                {% if item.role %}<small>({{ item.role }})</small>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </figure>
   {% else %}
     <p>You're not a member of any organisation yet.</p>
   {% endif %}

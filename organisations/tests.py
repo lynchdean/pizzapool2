@@ -201,6 +201,7 @@ class OrganisationDetailViewTests(TestCase):
             vendor=self.vendor,
             name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.url = reverse("organisations:organisation_detail", args=[self.organisation.slug])
 
@@ -216,10 +217,12 @@ class OrganisationDetailViewTests(TestCase):
         later = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Later Event",
             deadline=timezone.now() + timezone.timedelta(days=5),
+            status='open',
         )
         earlier = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Earlier Event",
             deadline=timezone.now() + timezone.timedelta(days=1),
+            status='open',
         )
 
         response = self.client.get(self.url)
@@ -564,6 +567,7 @@ class OrganisationImageTests(TestCase):
         event = Event.objects.create(
             organisation=self.organisation, vendor=vendor, name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
 
         response = self.client.get(

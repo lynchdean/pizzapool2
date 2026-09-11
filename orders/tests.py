@@ -29,6 +29,7 @@ class ClaimPortionsByQuantityTests(TestCase):
             vendor=self.vendor,
             name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
 
@@ -46,8 +47,8 @@ class ClaimPortionsByQuantityTests(TestCase):
         portion = Portion.objects.get(order=self.order, claimant_name="Alice")
         self.assertEqual(str(portion.claimant_phone), "+353871234567")
 
-    def test_claim_raises_event_not_open_error_for_locked_submitted_completed(self):
-        for status in ("locked", "submitted", "completed"):
+    def test_claim_raises_event_not_open_error_for_locked_closed_submitted(self):
+        for status in ("locked", "closed", "submitted"):
             with self.subTest(status=status):
                 self.event.status = status
                 self.event.save()
@@ -66,6 +67,7 @@ class ClaimPortionsByQuantityTests(TestCase):
             vendor=self.vendor,
             name="Other Event",
             deadline=timezone.now(),
+            status='open',
         )
 
         with self.assertRaises(NotEnoughPortionsError):
@@ -88,6 +90,7 @@ class CreateOrderTests(TestCase):
             vendor=self.vendor,
             name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
 
     def test_create_order_succeeds_when_event_open(self):
@@ -97,8 +100,8 @@ class CreateOrderTests(TestCase):
             Portion.objects.filter(order=order).count(), self.menu_item.portions_per_unit
         )
 
-    def test_create_order_raises_event_not_open_error_for_locked_submitted_completed(self):
-        for status in ("locked", "submitted", "completed"):
+    def test_create_order_raises_event_not_open_error_for_locked_closed_submitted(self):
+        for status in ("locked", "closed", "submitted"):
             with self.subTest(status=status):
                 self.event.status = status
                 self.event.save()
@@ -137,6 +140,7 @@ class JoinOrderViewTests(TestCase):
             vendor=self.vendor,
             name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
         self.url = reverse("orders:join_order", args=[self.order.public_id])
@@ -250,6 +254,7 @@ class UnclaimPortionViewTests(TestCase):
             vendor=self.vendor,
             name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
         claim_portions_by_quantity(self.event, [(self.order.id, 2)], "Bob", "+353871234567")
@@ -343,6 +348,7 @@ class StartOrderViewTests(TestCase):
             vendor=self.vendor,
             name="Friday Lunch",
             deadline=timezone.now(),
+            status='open',
         )
         self.url = reverse("orders:start_order", args=[self.event.public_id])
         self.valid_data = {
