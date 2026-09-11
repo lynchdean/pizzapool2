@@ -168,7 +168,7 @@ class JoinOrderViewTests(TestCase):
         claimed = Portion.objects.filter(order=self.order, claimant_name="Bob")
         self.assertEqual(claimed.count(), 2)
         self.assertTrue(claimed.exclude(claimant_phone="").exists())
-        self.assertContains(response, "Claimed 2 portion(s)!")
+        self.assertContains(response, "Claimed 2 portion(s) of Margherita!")
 
     def test_looking_up_by_raw_integer_pk_returns_404(self):
         url = reverse("orders:join_order", args=[str(self.order.pk)])
@@ -211,7 +211,7 @@ class JoinOrderViewTests(TestCase):
 
         response = self.client.post(self.url, self.valid_data, follow=True)
 
-        self.assertContains(response, "This event is no longer open for claims")
+        self.assertContains(response, "&#x27;Friday Lunch&#x27; is no longer open for claims")
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
         )
@@ -280,7 +280,7 @@ class UnclaimPortionViewTests(TestCase):
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
         )
-        self.assertContains(response, "Cancelled 2 portion(s).")
+        self.assertContains(response, "Cancelled 2 portion(s) of Margherita.")
 
     def test_post_with_wrong_phone_changes_nothing(self):
         response = self.client.post(
@@ -402,7 +402,7 @@ class StartOrderViewTests(TestCase):
 
         response = self.client.post(self.url, self.valid_data, follow=True)
 
-        self.assertContains(response, "This event is no longer open for new orders.")
+        self.assertContains(response, "&#x27;Friday Lunch&#x27; is no longer open for new orders.")
         self.assertFalse(Order.objects.filter(event=self.event).exists())
 
     def test_exceeding_rate_limit_blocks_further_attempts(self):
@@ -529,7 +529,7 @@ class DeleteOrderViewTests(TestCase):
         response = self.client.post(self.url, follow=True)
 
         self.assertFalse(Order.objects.filter(pk=self.order.pk).exists())
-        self.assertContains(response, "Order deleted.")
+        self.assertContains(response, "&#x27;Margherita&#x27; order deleted.")
 
     def test_post_deletes_order_as_superuser(self):
         superuser = User.objects.create_superuser(
@@ -550,7 +550,7 @@ class DeleteOrderViewTests(TestCase):
         response = self.client.post(self.url, follow=True)
 
         self.assertFalse(Order.objects.filter(pk=self.order.pk).exists())
-        self.assertContains(response, "Order deleted.")
+        self.assertContains(response, "&#x27;Margherita&#x27; order deleted.")
 
     def test_post_forbidden_for_organiser(self):
         organiser = User.objects.create_user(username="organiser", password="pw")

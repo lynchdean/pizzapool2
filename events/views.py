@@ -148,7 +148,7 @@ def event_edit(request, org_slug, event_id):
         form = EventForm(request.POST, instance=event, organisation=event.organisation)
         if form.is_valid():
             form.save()
-            messages.success(request, "Event updated.")
+            messages.success(request, f"Event '{event.name}' updated.")
             return redirect('events:event_detail', org_slug=org_slug, event_id=event.public_id)
     else:
         form = EventForm(instance=event, organisation=event.organisation)
@@ -173,7 +173,10 @@ def event_delete(request, org_slug, event_id):
             return redirect('organisations:organisation_detail', org_slug=org_slug)
         except EventHasClaimedPortionsError as e:
             claimed_count = e.claimed_count
-            messages.error(request, f"Can't delete: {claimed_count} portion(s) have already been claimed.")
+            messages.error(
+                request,
+                f"Can't delete '{event.name}': {claimed_count} portion(s) have already been claimed.",
+            )
 
     return render(request, 'events/event_confirm_delete.html', {
         'event': event,

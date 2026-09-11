@@ -66,7 +66,7 @@ def vendor_edit(request, org_slug, vendor_id):
         form = VendorForm(request.POST, instance=vendor, organisation=vendor.organisation)
         if form.is_valid():
             form.save()
-            messages.success(request, "Vendor updated.")
+            messages.success(request, f"Vendor '{vendor.name}' updated.")
             return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor.id)
     else:
         form = VendorForm(instance=vendor, organisation=vendor.organisation)
@@ -88,7 +88,7 @@ def vendor_delete(request, org_slug, vendor_id):
             vendor.delete()
             messages.success(request, f"Vendor '{name}' deleted.")
         except ProtectedError:
-            messages.error(request, "Can't delete this vendor: it still has events.")
+            messages.error(request, f"Can't delete '{vendor.name}': it still has events.")
 
     return redirect('organisations:organisation_detail', org_slug=org_slug)
 
@@ -100,8 +100,8 @@ def menu_item_create(request, org_slug, vendor_id):
     if request.method == 'POST':
         form = MenuItemForm(request.POST, vendor=vendor)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Menu item added.")
+            item = form.save()
+            messages.success(request, f"Menu item '{item.name}' added.")
             return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
         return render(request, 'vendors/vendor_detail.html',
                        _vendor_detail_context(vendor, org_slug, new_item_form=form))
@@ -118,7 +118,7 @@ def menu_item_edit(request, org_slug, vendor_id, item_id):
         form = MenuItemForm(request.POST, instance=item, vendor=vendor)
         if form.is_valid():
             form.save()
-            messages.success(request, "Menu item updated.")
+            messages.success(request, f"Menu item '{item.name}' updated.")
             return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)
         return render(request, 'vendors/vendor_detail.html', _vendor_detail_context(
             vendor, org_slug, edited_item_id=item.id, edited_item_form=form
@@ -138,6 +138,6 @@ def menu_item_delete(request, org_slug, vendor_id, item_id):
             item.delete()
             messages.success(request, f"Menu item '{name}' deleted.")
         except ProtectedError:
-            messages.error(request, "Can't delete this menu item: it still has orders.")
+            messages.error(request, f"Can't delete '{name}': it still has orders.")
 
     return redirect('organisations:vendor_detail', org_slug=org_slug, vendor_id=vendor_id)

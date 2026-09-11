@@ -57,7 +57,7 @@ def organisation_edit(request, org_slug):
         form = OrganisationForm(request.POST, request.FILES, instance=organisation)
         if form.is_valid():
             form.save()
-            messages.success(request, "Organisation updated.")
+            messages.success(request, f"Organisation '{organisation.name}' updated.")
             return redirect('organisations:organisation_detail', org_slug=organisation.slug)
     else:
         form = OrganisationForm(instance=organisation)

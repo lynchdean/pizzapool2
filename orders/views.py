@@ -53,7 +53,7 @@ def _is_rate_limited(request, action, limit=10, period=60):
 
 def join_order_view(request, order_id):
     order = get_object_or_404(
-        Order.objects.select_related('event', 'event__organisation'), public_id=order_id
+        Order.objects.select_related('event', 'event__organisation', 'menu_item'), public_id=order_id
     )
     event = order.event
 
@@ -78,18 +78,18 @@ def join_order_view(request, order_id):
             form.cleaned_data['claimant_name'],
             form.cleaned_data['claimant_phone'],
         )
-        messages.success(request, f"Claimed {len(claimed)} portion(s)!")
+        messages.success(request, f"Claimed {len(claimed)} portion(s) of {order.menu_item.name}!")
     except EventNotOpenError:
-        messages.error(request, "This event is no longer open for claims.")
+        messages.error(request, f"'{event.name}' is no longer open for claims.")
     except NotEnoughPortionsError:
-        messages.error(request, "Sorry, someone else just claimed those. Please try again.")
+        messages.error(request, f"Sorry, someone else just claimed those {order.menu_item.name} portions. Please try again.")
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
 
 def unclaim_portion_view(request, order_id):
     order = get_object_or_404(
-        Order.objects.select_related('event', 'event__organisation'), public_id=order_id
+        Order.objects.select_related('event', 'event__organisation', 'menu_item'), public_id=order_id
     )
     event = order.event
 
@@ -107,11 +107,14 @@ def unclaim_portion_view(request, order_id):
 
     try:
         count = unclaim_portions(event, order.id, form.cleaned_data['claimant_phone'])
-        messages.success(request, f"Cancelled {count} portion(s).")
+        messages.success(request, f"Cancelled {count} portion(s) of {order.menu_item.name}.")
     except EventNotOpenError:
-        messages.error(request, "This event is no longer open, so claims can't be cancelled.")
+        messages.error(request, f"'{event.name}' is no longer open, so claims can't be cancelled.")
     except ClaimNotFoundError:
-        messages.error(request, "We couldn't find a claim matching that phone number on this order.")
+        messages.error(
+            request,
+            f"We couldn't find a claim matching that phone number on the {order.menu_item.name} order.",
+        )
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
@@ -153,16 +156,19 @@ def start_order_view(request, event_id):
             f"Started a new order for {menu_item.name} and claimed {len(claimed)} portion(s)!",
         )
     except EventNotOpenError:
-        messages.error(request, "This event is no longer open for new orders.")
+        messages.error(request, f"'{event.name}' is no longer open for new orders.")
     except NotEnoughPortionsError:
-        messages.error(request, "You can't claim more portions than the order will contain.")
+        messages.error(
+            request,
+            f"You can't claim more than the {menu_item.portions_per_unit} portions {menu_item.name} will contain.",
+        )
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
 
 
 def delete_order_view(request, order_id):
     order = get_object_or_404(
-        Order.objects.select_related('event', 'event__organisation'), public_id=order_id
+        Order.objects.select_related('event', 'event__organisation', 'menu_item'), public_id=order_id
     )
     event = order.event
 
@@ -172,7 +178,8 @@ def delete_order_view(request, order_id):
     if not user_is_organisation_owner(request.user, event.organisation):
         raise PermissionDenied
 
+    menu_item_name = order.menu_item.name
     delete_order(order)
-    messages.success(request, "Order deleted.")
+    messages.success(request, f"'{menu_item_name}' order deleted.")
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
