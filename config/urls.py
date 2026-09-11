@@ -15,12 +15,12 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.db import connection
 from django.http import HttpResponse
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
 
 
 def health_check(request):
@@ -57,5 +57,9 @@ urlpatterns = [
 # runtime-uploaded MEDIA files - at this app's traffic volume, having Django
 # itself serve /media/ in production too (backed by a persistent volume at
 # MEDIA_ROOT) is simpler and perfectly fine, rather than standing up a
-# separate object-storage service.
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# separate object-storage service. Using the `serve` view directly rather
+# than django.conf.urls.static.static() - that helper silently registers no
+# route at all once DEBUG=False, which would defeat the point above.
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]
