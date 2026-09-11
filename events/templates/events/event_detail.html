@@ -115,7 +115,7 @@
 
     {% if event.status == 'open' and order.available_count > 0 %}
       <details class="claim-accordion" id="claim-accordion-{{ order.public_id }}">
-        <summary role="button" class="secondary outline">Claim a slice ({{ order.available_count }} left)</summary>
+        <summary role="button" class="secondary outline">Claim a portion ({{ order.available_count }} left)</summary>
         <form method="post" action="{% url 'orders:join_order' order.public_id %}">
           {% csrf_token %}
           <div class="grid">

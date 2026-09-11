@@ -462,7 +462,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Claim a slice (3 left)")
+        self.assertContains(response, "Claim a portion (3 left)")
         self.assertContains(response, "Start a new order")
 
     def test_start_section_dropdown_lists_only_active_menu_items(self):
@@ -492,7 +492,7 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, "Claim a slice (3 left)")
+        self.assertContains(response, "Claim a portion (3 left)")
         self.assertNotContains(response, "Start another order")
         self.assertNotContains(response, "Start an order")
 
@@ -621,7 +621,7 @@ class EventDetailViewTests(TestCase):
         self.assertNotContains(response, '<details class="claim-accordion"')
 
     def test_partially_claimed_order_shows_no_status_label_while_open(self):
-        # The "Claim a slice (N left)" accordion button already shows the
+        # The "Claim a portion (N left)" accordion button already shows the
         # remaining count, so no redundant fraction label is shown here.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
