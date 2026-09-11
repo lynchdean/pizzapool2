@@ -1,19 +1,22 @@
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from events.models import Event
-from organisations.models import Organisation
+from organisations.models import Organisation, OrganisationMembership
 from vendors.models import Vendor, MenuItem
 from .models import Order, Portion
 from .services import (
     claim_portions_by_quantity,
     create_order,
+    delete_order,
     unclaim_portions,
     ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
+    OrderHasClaimedPortionsError,
 )
 
 
@@ -456,3 +459,132 @@ class StartOrderViewTests(TestCase):
         self.assertIsNotNone(order)
         self.assertTrue(Portion.objects.filter(order=order, claimant_name="Alice").exists())
         self.assertNotEqual(response.status_code, 403)
+
+
+class DeleteOrderServiceTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        self.menu_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        self.event = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
+            deadline=timezone.now(),
+            status='open',
+        )
+
+    def test_delete_order_removes_order_when_no_claims(self):
+        order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+
+        delete_order(order)
+
+        self.assertFalse(Order.objects.filter(pk=order.pk).exists())
+
+    def test_delete_order_raises_when_any_portion_claimed(self):
+        order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+        portion = order.portions.first()
+        portion.claimant_name = "Alice"
+        portion.save()
+
+        with self.assertRaises(OrderHasClaimedPortionsError):
+            delete_order(order)
+
+        self.assertTrue(Order.objects.filter(pk=order.pk).exists())
+
+    def test_delete_order_raises_with_correct_claimed_count(self):
+        order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+        for portion in list(order.portions.all())[:2]:
+            portion.claimant_name = "Alice"
+            portion.save()
+
+        with self.assertRaises(OrderHasClaimedPortionsError) as ctx:
+            delete_order(order)
+
+        self.assertEqual(ctx.exception.claimed_count, 2)
+
+
+class DeleteOrderViewTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.owner = User.objects.create_user(username="owner", password="pw")
+        OrganisationMembership.objects.create(
+            user=self.owner, organisation=self.organisation, role="owner"
+        )
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        self.menu_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        self.event = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
+            deadline=timezone.now(),
+            status='open',
+        )
+        self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
+        self.url = reverse("orders:delete_order", args=[self.order.public_id])
+
+    def test_get_redirects_without_deleting(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.get(self.url)
+
+        self.assertRedirects(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+        )
+        self.assertTrue(Order.objects.filter(pk=self.order.pk).exists())
+
+    def test_post_deletes_order_with_no_claimed_portions_as_owner(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.post(self.url, follow=True)
+
+        self.assertFalse(Order.objects.filter(pk=self.order.pk).exists())
+        self.assertContains(response, "Order deleted.")
+
+    def test_post_deletes_order_as_superuser(self):
+        superuser = User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="pw"
+        )
+        self.client.force_login(superuser)
+
+        self.client.post(self.url)
+
+        self.assertFalse(Order.objects.filter(pk=self.order.pk).exists())
+
+    def test_post_refuses_to_delete_when_portions_claimed(self):
+        self.client.force_login(self.owner)
+        portion = self.order.portions.first()
+        portion.claimant_name = "Alice"
+        portion.save()
+
+        response = self.client.post(self.url, follow=True)
+
+        self.assertTrue(Order.objects.filter(pk=self.order.pk).exists())
+        self.assertContains(response, "already been claimed")
+
+    def test_post_forbidden_for_organiser(self):
+        organiser = User.objects.create_user(username="organiser", password="pw")
+        OrganisationMembership.objects.create(
+            user=organiser, organisation=self.organisation, role="organiser"
+        )
+        self.client.force_login(organiser)
+
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Order.objects.filter(pk=self.order.pk).exists())
+
+    def test_post_forbidden_for_anonymous(self):
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Order.objects.filter(pk=self.order.pk).exists())
+
+    def test_post_forbidden_for_non_member(self):
+        other_user = User.objects.create_user(username="other", password="pw")
+        self.client.force_login(other_user)
+
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Order.objects.filter(pk=self.order.pk).exists())

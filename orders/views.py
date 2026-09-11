@@ -1,18 +1,22 @@
 # orders/views.py
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from events.models import Event
+from organisations.permissions import user_is_organisation_owner
 from vendors.models import MenuItem
 from .forms import JoinOrderForm, StartOrderForm, UnclaimForm
 from .models import Order
 from .services import (
     claim_portions_by_quantity,
+    delete_order,
     start_order_and_claim,
     unclaim_portions,
     ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
+    OrderHasClaimedPortionsError,
 )
 
 
@@ -155,3 +159,24 @@ def start_order_view(request, event_id):
         messages.error(request, "You can't claim more portions than the order will contain.")
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)
+
+
+def delete_order_view(request, order_id):
+    order = get_object_or_404(
+        Order.objects.select_related('event', 'event__organisation'), public_id=order_id
+    )
+    event = order.event
+
+    if request.method != 'POST':
+        return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
+
+    if not user_is_organisation_owner(request.user, event.organisation):
+        raise PermissionDenied
+
+    try:
+        delete_order(order)
+        messages.success(request, "Order deleted.")
+    except OrderHasClaimedPortionsError as e:
+        messages.error(request, f"Can't delete: {e.claimed_count} portion(s) have already been claimed.")
+
+    return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)

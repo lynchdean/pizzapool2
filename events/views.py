@@ -6,7 +6,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from orders.models import Order, Portion
 from organisations.models import Organisation
-from organisations.permissions import organisation_member_required, user_can_access_organisation
+from organisations.permissions import (
+    organisation_member_required, user_can_access_organisation, user_is_organisation_owner,
+)
 
 from .forms import EventForm
 from .models import Event
@@ -105,6 +107,7 @@ def event_detail(request, org_slug, event_id):
         order_total = sum((e['subtotal'] for e in order_summary), Decimal('0.00'))
 
     can_manage = user_can_access_organisation(request.user, event.organisation)
+    can_delete_orders = user_is_organisation_owner(request.user, event.organisation)
 
     return render(request, 'events/event_detail.html', {
         'event': event,
@@ -113,6 +116,7 @@ def event_detail(request, org_slug, event_id):
         'order_summary': order_summary,
         'order_total': order_total,
         'can_manage': can_manage,
+        'can_delete_orders': can_delete_orders,
         'is_finalized': is_finalized,
     })
 

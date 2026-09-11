@@ -16,6 +16,16 @@ def user_can_access_organisation(user, organisation):
     return OrganisationMembership.objects.filter(user=user, organisation=organisation).exists()
 
 
+def user_is_organisation_owner(user, organisation):
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return OrganisationMembership.objects.filter(
+        user=user, organisation=organisation, role="owner"
+    ).exists()
+
+
 def organisation_member_required(view_func):
     """
     Wraps a view that takes an `org_slug` kwarg. Anonymous users are

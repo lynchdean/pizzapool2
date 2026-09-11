@@ -107,6 +107,26 @@ def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_ph
     return order, claimed
 
 
+class OrderHasClaimedPortionsError(Exception):
+    def __init__(self, order_id, claimed_count):
+        self.order_id = order_id
+        self.claimed_count = claimed_count
+        super().__init__(f"Order {order_id} has {claimed_count} claimed portion(s); refusing to delete.")
+
+
+def delete_order(order):
+    with transaction.atomic():
+        locked_order = Order.objects.select_for_update().get(pk=order.pk)
+        claimed_count = Portion.objects.select_for_update().filter(
+            order=locked_order, claimant_name__isnull=False
+        ).count()
+
+        if claimed_count:
+            raise OrderHasClaimedPortionsError(locked_order.pk, claimed_count)
+
+        locked_order.delete()
+
+
 def unclaim_portions(event, order_id, claimant_phone):
     """
     Releases every portion on order_id claimed under claimant_phone, freeing

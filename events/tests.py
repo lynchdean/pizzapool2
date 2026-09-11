@@ -335,6 +335,60 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Edit event")
 
+    def test_delete_order_button_hidden_for_anonymous_visitors(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Delete order")
+
+    def test_delete_order_button_hidden_for_organiser(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+        organiser = User.objects.create_user(username="organiser", password="pw")
+        OrganisationMembership.objects.create(
+            user=organiser, organisation=self.organisation, role="organiser"
+        )
+        self.client.force_login(organiser)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Delete order")
+
+    def test_delete_order_button_shown_to_owner(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+        owner = User.objects.create_user(username="owner", password="pw")
+        OrganisationMembership.objects.create(
+            user=owner, organisation=self.organisation, role="owner"
+        )
+        self.client.force_login(owner)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Delete order")
+
+    def test_delete_order_button_shown_to_superuser(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        Order.objects.create(event=self.event, menu_item=item)
+        superuser = User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="pw"
+        )
+        self.client.force_login(superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Delete order")
+
     def test_looking_up_by_raw_integer_pk_returns_404(self):
         url = reverse("events:event_detail", args=[self.organisation.slug, str(self.event.pk)])
 

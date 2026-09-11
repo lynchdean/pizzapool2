@@ -164,9 +164,25 @@
       border-bottom: var(--pico-border-width) solid var(--pico-card-border-color);
       border-top-left-radius: var(--pico-border-radius);
       border-top-right-radius: var(--pico-border-radius);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
     }
     .order-card > header strong {
       color: #dc143b;
+    }
+    /* The delete-order form is a flex sibling of the title block above, not
+       a grid child, so it doesn't need .grid's margin-stripping - just keep
+       it from adding its own spacing beneath the button. */
+    .order-card > header form {
+      margin: 0;
+      flex: 0 0 auto;
+    }
+    .order-card > header form button {
+      width: auto;
+      margin-bottom: 0;
+      white-space: nowrap;
     }
     /* One line of text per claimant instead of a <table> - a rigid
        multi-column table has no good way to reflow on narrow screens and
