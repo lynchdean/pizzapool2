@@ -111,9 +111,13 @@ def unclaim_portion_view(request, order_id):
     except EventNotOpenError:
         messages.error(request, f"'{event.name}' is no longer open, so claims can't be cancelled.")
     except ClaimNotFoundError:
+        # The claimant_phone driving this is a hidden, server-filled
+        # reference (see event_detail.html) - a visitor never types it, so
+        # this only fires on a stale page / race (someone else already
+        # cancelled this exact claim), not a "wrong phone number" typo.
         messages.error(
             request,
-            f"We couldn't find a claim matching that phone number on the {order.menu_item.name} order.",
+            f"That claim on the {order.menu_item.name} order may have already been cancelled - refresh and try again.",
         )
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)

@@ -119,7 +119,11 @@ def delete_order(order):
 def unclaim_portions(event, order_id, claimant_phone):
     """
     Releases every portion on order_id claimed under claimant_phone, freeing
-    them up for someone else to claim. Matches purely on phone number (per
+    them up for someone else to claim. claimant_phone is a reference key
+    here, not an identity check - the caller isn't proving they're that
+    claimant, just telling us which claimant group on this order to release
+    (the "Cancel claim" button passes it via a hidden, server-filled field,
+    not something the visitor types in). Matches purely on phone number (per
     product decision): if multiple different names share one phone on the
     same order, this releases all of them together.
     """

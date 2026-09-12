@@ -36,4 +36,10 @@ class StartOrderForm(_ClaimFieldsMixin):
 
 
 class UnclaimForm(forms.Form):
-    claimant_phone = PhoneNumberField(label="Phone number")
+    # Plain CharField, not PhoneNumberField: this value is always
+    # machine-generated (copied from an existing Portion.claimant_phone by
+    # the template, never typed by a user for this action - see the comment
+    # on the hidden input in event_detail.html), so it's just a reference
+    # key identifying which claimant group to release, not user input that
+    # needs phone-format validation.
+    claimant_phone = forms.CharField()

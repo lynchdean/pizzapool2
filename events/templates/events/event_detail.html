@@ -95,6 +95,9 @@
               <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}"
                     style="display:inline" onsubmit="return confirm('Cancel this claim?');">
                 {% csrf_token %}
+                {# Deliberately hidden and server-filled, not a typed re-entry step - this is
+                   a reference telling the server which claimant group to release, not an
+                   identity check (that requirement was intentionally dropped). #}
                 <input type="hidden" name="claimant_phone" value="{{ claimant.phone }}">
                 <button type="submit" class="secondary outline icon-button" aria-label="Cancel claim">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

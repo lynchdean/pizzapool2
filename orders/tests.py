@@ -282,7 +282,11 @@ class UnclaimPortionViewTests(TestCase):
         )
         self.assertContains(response, "Cancelled 2 portion(s) of Margherita.")
 
-    def test_post_with_wrong_phone_changes_nothing(self):
+    def test_post_with_nonmatching_reference_changes_nothing(self):
+        # claimant_phone here is a reference key (see UnclaimForm/unclaim_portions),
+        # not a user-typed identity check - this simulates a stale page / race
+        # (the claim was already cancelled) rather than someone "getting the
+        # phone number wrong".
         response = self.client.post(
             self.url, {"claimant_phone": "+353879999999"}, follow=True
         )
@@ -290,7 +294,7 @@ class UnclaimPortionViewTests(TestCase):
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 2
         )
-        self.assertContains(response, "find a claim matching that phone number")
+        self.assertContains(response, "may have already been cancelled")
 
     def test_unclaiming_one_claimant_does_not_affect_another(self):
         claim_portions_by_quantity(self.event, [(self.order.id, 1)], "Carol", "+353871111111")
