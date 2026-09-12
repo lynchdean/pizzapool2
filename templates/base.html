@@ -642,5 +642,58 @@
       });
     })();
   </script>
+
+  <script>
+    (function () {
+      // The poll trigger condition already skips a cycle while an
+      // input/select is focused, but that only protects active typing - if
+      // someone fills in the order-starting form and then looks elsewhere
+      // (no longer focused) before submitting, the next poll's outerHTML
+      // swap would otherwise silently wipe out everything they'd typed.
+      // Stash the values before the swap and reapply them after.
+      var saved = null;
+
+      document.body.addEventListener('htmx:beforeSwap', function (event) {
+        if (!event.target || event.target.id !== 'live-content') return;
+        var form = document.querySelector('.start-order-form');
+        if (!form) return;
+        saved = {
+          claimant_name: form.querySelector('[name=claimant_name]').value,
+          claimant_phone: form.querySelector('[name=claimant_phone]').value,
+          revolut_username: form.querySelector('[name=revolut_username]').value,
+          menu_item_id: form.querySelector('[name=menu_item_id]').value,
+          quantity: form.querySelector('[name=quantity]').value,
+        };
+      });
+
+      document.body.addEventListener('htmx:afterSwap', function () {
+        if (!saved) return;
+        var values = saved;
+        saved = null;
+
+        var form = document.querySelector('.start-order-form');
+        if (!form) return;
+
+        if (values.claimant_name) form.querySelector('[name=claimant_name]').value = values.claimant_name;
+        if (values.claimant_phone) form.querySelector('[name=claimant_phone]').value = values.claimant_phone;
+        if (values.revolut_username) form.querySelector('[name=revolut_username]').value = values.revolut_username;
+
+        if (values.menu_item_id) {
+          var menuSelect = form.querySelector('[name=menu_item_id]');
+          menuSelect.value = values.menu_item_id;
+          // Repopulates the quantity <select>'s options for this menu item
+          // (see the menu-item-select change handler above) before we can
+          // restore the quantity value itself.
+          menuSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+          if (values.quantity) {
+            var quantitySelect = form.querySelector('[name=quantity]');
+            quantitySelect.value = values.quantity;
+            quantitySelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
