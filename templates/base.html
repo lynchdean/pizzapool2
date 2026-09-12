@@ -695,5 +695,56 @@
       });
     })();
   </script>
+
+  <script>
+    (function () {
+      // Same problem as the order-starting form above, but there can be
+      // several of these on the page at once (one per order), so each
+      // saved set of values is keyed by its accordion's id to make sure a
+      // poll doesn't mix up which typed values belong to which order.
+      var saved = {};
+
+      document.body.addEventListener('htmx:beforeSwap', function (event) {
+        if (!event.target || event.target.id !== 'live-content') return;
+        saved = {};
+        document.querySelectorAll('.claim-accordion[id] form').forEach(function (form) {
+          var details = form.closest('.claim-accordion');
+          var name = form.querySelector('[name=claimant_name]');
+          var phone = form.querySelector('[name=claimant_phone]');
+          var quantity = form.querySelector('[name=quantity]');
+          if (!(name && name.value) && !(phone && phone.value)) return;
+          saved[details.id] = {
+            claimant_name: name ? name.value : '',
+            claimant_phone: phone ? phone.value : '',
+            quantity: quantity ? quantity.value : '',
+          };
+        });
+      });
+
+      document.body.addEventListener('htmx:afterSwap', function () {
+        var ids = Object.keys(saved);
+        if (!ids.length) return;
+
+        ids.forEach(function (id) {
+          var details = document.getElementById(id);
+          var form = details && details.querySelector('form');
+          if (!form) return;
+
+          var values = saved[id];
+          var name = form.querySelector('[name=claimant_name]');
+          var phone = form.querySelector('[name=claimant_phone]');
+          var quantity = form.querySelector('[name=quantity]');
+          if (name && values.claimant_name) name.value = values.claimant_name;
+          if (phone && values.claimant_phone) phone.value = values.claimant_phone;
+          if (quantity && values.quantity) {
+            quantity.value = values.quantity;
+            quantity.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
+        saved = {};
+      });
+    })();
+  </script>
 </body>
 </html>
