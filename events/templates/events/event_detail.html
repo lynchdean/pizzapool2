@@ -8,6 +8,9 @@
     <h1>{{ event.organisation.name }} · {{ event.name }}</h1>
     <p>{{ event.vendor.name }} · {{ event.get_status_display }} · Deadline {{ event.deadline }}</p>
   </hgroup>
+  {% if event.description %}
+    <p>{{ event.description|linebreaksbr }}</p>
+  {% endif %}
 </div>
 
 {% if can_manage %}

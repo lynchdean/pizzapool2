@@ -19,7 +19,7 @@ class EventForm(forms.ModelForm):
 
     class Meta:
         model = Event
-        fields = ['vendor', 'name', 'status', 'deadline']
+        fields = ['vendor', 'name', 'description', 'status', 'deadline']
 
     def __init__(self, *args, organisation=None, **kwargs):
         super().__init__(*args, **kwargs)

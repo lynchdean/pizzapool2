@@ -55,6 +55,37 @@ class EventCreateViewTests(TestCase):
             response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
         )
 
+    def test_member_can_create_event_with_description(self):
+        self.client.force_login(self.member)
+        deadline = timezone.now() + timezone.timedelta(days=1)
+
+        self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": "Friday Lunch",
+            "description": "Bring your own drinks - we'll order pizza at 1pm.",
+            "status": "open",
+            "deadline": deadline.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        event = Event.objects.get(name="Friday Lunch")
+        self.assertEqual(event.description, "Bring your own drinks - we'll order pizza at 1pm.")
+
+    def test_description_is_optional(self):
+        self.client.force_login(self.member)
+        deadline = timezone.now() + timezone.timedelta(days=1)
+
+        response = self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": "Friday Lunch",
+            "status": "open",
+            "deadline": deadline.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        self.assertRedirects(
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
+        )
+        self.assertEqual(Event.objects.get(name="Friday Lunch").description, "")
+
     def test_deadline_field_renders_as_native_datetime_picker(self):
         self.client.force_login(self.member)
 
@@ -135,6 +166,18 @@ class EventEditViewTests(TestCase):
         self.event.refresh_from_db()
         self.assertEqual(self.event.name, "Friday Lunch (updated)")
         self.assertEqual(self.event.status, "locked")
+
+    def test_member_can_edit_event_description(self):
+        self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": self.event.name,
+            "description": "Meet in the lobby at 6pm.",
+            "status": self.event.status,
+            "deadline": self.event.deadline.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.description, "Meet in the lobby at 6pm.")
 
     def test_cancel_link_points_to_event_detail(self):
         response = self.client.get(self.url)
@@ -288,6 +331,29 @@ class EventDetailViewTests(TestCase):
             status='open',
         )
         self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+
+    def test_description_shown_when_set(self):
+        self.event.description = "Bring your own drinks."
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Bring your own drinks.")
+
+    def test_description_preserves_line_breaks(self):
+        self.event.description = "Line one.\nLine two."
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Line one.<br>Line two.", html=False)
+
+    def test_no_description_paragraph_when_blank(self):
+        # self.event.description is "" (the model default) - no stray empty
+        # <p> should render for it.
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, '<p></p>')
 
     def test_wrong_org_slug_returns_404(self):
         other_org = Organisation.objects.create(name="Other Co")
