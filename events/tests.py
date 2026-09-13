@@ -709,6 +709,72 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Confirmed")
 
+    def test_pay_button_shown_for_full_order_with_revtag_when_closed(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item, revolut_username="alicepay")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Pay alicepay on Revolut")
+        self.assertContains(response, "https://revolut.me/alicepay")
+
+    def test_pay_button_shown_for_full_order_with_revtag_when_submitted(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item, revolut_username="alicepay")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "submitted"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Pay alicepay on Revolut")
+
+    def test_pay_button_hidden_before_staging_phase(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item, revolut_username="alicepay")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        # self.event.status stays 'open' from setUp - the button only belongs
+        # to the closed/submitted (post-deadline) phases.
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "on Revolut")
+
+    def test_pay_button_hidden_for_partially_claimed_order_when_closed(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item, revolut_username="alicepay")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "on Revolut")
+
+    def test_pay_button_hidden_when_order_has_no_revtag(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "on Revolut")
+
     def test_orders_shown_in_creation_order_not_grouped_by_menu_item(self):
         # Names deliberately chosen so alphabetical-by-item-name order (the
         # old grouping behavior) would disagree with creation order.

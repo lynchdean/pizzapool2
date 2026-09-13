@@ -292,6 +292,13 @@
       margin-bottom: var(--pico-spacing);
     }
 
+    /* Same reasoning as .claim-accordion above - direct flex child of
+       .order-card, so no margin of its own. */
+    .order-card > a[role="button"] {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
     /* Pico anchors dropdown submenus to the trigger's left edge by default,
        which pushes them off-screen when the trigger is the rightmost nav item. */
     nav .dropdown > summary + ul {
