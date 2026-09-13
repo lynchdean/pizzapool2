@@ -2,35 +2,62 @@
 {% load static %}
 
 {% block content %}
-<article>
+<section class="home-hero">
   <hgroup>
     <h1 class="home-hero-brand"><img src="{% static 'img/logo-red.png' %}" alt="" class="brand-logo"><span class="brand-wordmark">pizzapool</span></h1>
     <p>Group food orders for your organisation.</p>
   </hgroup>
-  <p>Set up an event, share the link, and let people claim their own portions by name and phone number. No account needed for anyone but you.</p>
-  {% if user.is_authenticated %}
-    <a href="{% url 'organisations:my_organisations' %}" role="button">My organisations</a>
-  {% else %}
-    <a href="{% url 'login' %}" role="button">Log in</a>
-  {% endif %}
-</article>
+  <p class="home-hero-sub">Set up an event, share the link, and let people claim their own portions by name and phone number. No account needed for anyone but you.</p>
+  <div class="home-cta">
+    {% if user.is_authenticated %}
+      <a href="{% url 'organisations:my_organisations' %}" role="button">My organisations</a>
+    {% else %}
+      <a href="{% url 'login' %}" role="button">Log in</a>
+      <a href="#how-it-works" role="button" class="secondary">See how it works</a>
+    {% endif %}
+  </div>
+</section>
 
-<article>
+<article id="how-it-works">
   <header><strong>How it works</strong></header>
-  <ol>
-    <li><strong>Create an event</strong> with a vendor - a pizza night, a team lunch, whatever it is.</li>
-    <li><strong>Share the link.</strong> Each item automatically splits into individually claimable portions.</li>
-    <li><strong>People claim their share</strong> by name and phone number - no sign-up required.</li>
-  </ol>
+  <div class="grid">
+    <div class="step-card">
+      <span class="step-number">1</span>
+      <strong>Create an event</strong>
+      <p>Pick a vendor - a pizza night, a team lunch, whatever it is.</p>
+    </div>
+    <div class="step-card">
+      <span class="step-number">2</span>
+      <strong>Share the link</strong>
+      <p>Each item automatically splits into individually claimable portions.</p>
+    </div>
+    <div class="step-card">
+      <span class="step-number">3</span>
+      <strong>People claim their share</strong>
+      <p>Just a name and phone number - no sign-up required.</p>
+    </div>
+  </div>
 </article>
 
 <article>
   <header><strong>Built for group orders</strong></header>
-  <ul>
-    <li>Large orders split fairly into individual portions, so nobody overpays or gets left out.</li>
-    <li>Participants don't need an account - just a name and phone number to claim their share.</li>
-    <li>Organisers stay in control: lock an event once it's full, and see exactly what to order.</li>
-    <li>Social by design, encourages people to join orders with people and get to know them better.</li>
-  </ul>
+  <div class="feature-grid">
+    <p class="feature-item">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>Large orders split fairly into individual portions, so nobody overpays or gets left out.</span>
+    </p>
+    <p class="feature-item">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>Participants don't need an account - just a name and phone number to claim their share.</span>
+    </p>
+    <p class="feature-item">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>Organisers stay in control: lock an event once it's full, and see exactly what to order.</span>
+    </p>
+    <p class="feature-item">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>Social by design, encourages people to join orders with people and get to know them better.</span>
+    </p>
+  </div>
 </article>
 {% endblock %}
