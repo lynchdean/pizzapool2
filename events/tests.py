@@ -167,6 +167,67 @@ class EventEditViewTests(TestCase):
         self.assertEqual(self.event.name, "Friday Lunch (updated)")
         self.assertEqual(self.event.status, "locked")
 
+    def test_reopening_a_past_deadline_event_requires_a_new_deadline(self):
+        self.event.status = 'closed'
+        self.event.deadline = timezone.now() - timezone.timedelta(hours=1)
+        self.event.save()
+
+        response = self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": self.event.name,
+            "status": "open",
+            "deadline": self.event.deadline.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"], "deadline", "Deadline must be in the future to reopen this event.",
+        )
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, 'closed')
+
+    def test_reopening_with_a_future_deadline_succeeds(self):
+        self.event.status = 'closed'
+        self.event.deadline = timezone.now() - timezone.timedelta(hours=1)
+        self.event.save()
+        # A full day out, not just an hour or two: TIME_ZONE='Europe/Dublin'
+        # means a naive "YYYY-MM-DD HH:MM:SS" string posted to the form gets
+        # interpreted as local time and converted back to UTC, shifting it
+        # by up to an hour - a small margin here could round-trip to "now"
+        # or earlier and make this test flaky depending on time of year/day.
+        new_deadline = timezone.now() + timezone.timedelta(days=1)
+
+        response = self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": self.event.name,
+            "status": "open",
+            "deadline": new_deadline.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        self.assertRedirects(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+        )
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, 'open')
+
+    def test_editing_a_past_deadline_event_without_reopening_is_allowed(self):
+        self.event.status = 'closed'
+        self.event.deadline = timezone.now() - timezone.timedelta(hours=1)
+        self.event.save()
+
+        response = self.client.post(self.url, {
+            "vendor": self.vendor.id,
+            "name": "Friday Lunch (renamed)",
+            "status": "closed",
+            "deadline": self.event.deadline.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        self.assertRedirects(
+            response, reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+        )
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.name, "Friday Lunch (renamed)")
+
     def test_member_can_edit_event_description(self):
         self.client.post(self.url, {
             "vendor": self.vendor.id,
@@ -223,7 +284,7 @@ class DeleteEventServiceTests(TestCase):
         )
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
 
@@ -278,7 +339,7 @@ class EventDeleteViewTests(TestCase):
         )
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.url = reverse("organisations:event_delete", args=[self.organisation.slug, self.event.public_id])
@@ -327,10 +388,20 @@ class EventDetailViewTests(TestCase):
         self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.url = reverse("events:event_detail", args=[self.organisation.slug, self.event.public_id])
+
+    def test_open_event_flips_to_closed_once_deadline_passes(self):
+        self.event.deadline = timezone.now() - timezone.timedelta(minutes=1)
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, 'closed')
+        self.assertContains(response, "Closed")
 
     def test_description_shown_when_set(self):
         self.event.description = "Bring your own drinks."
@@ -891,7 +962,7 @@ class EventOrderSummaryTests(TestCase):
         )
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         full_order_1 = Order.objects.create(event=self.event, menu_item=self.margherita)
@@ -965,12 +1036,12 @@ class EventPublicIdTests(TestCase):
     def test_two_events_get_different_public_ids(self):
         event1 = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         event2 = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Saturday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
 
@@ -981,7 +1052,7 @@ class EventPublicIdTests(TestCase):
     def test_resaving_an_event_does_not_change_its_public_id(self):
         event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         original_public_id = event.public_id

@@ -40,6 +40,12 @@ def organisation_detail(request, org_slug):
     events = organisation.events.select_related('vendor')
     now = timezone.now()
 
+    # Same opportunistic sync as events/views.py:event_detail - there's no
+    # background job flipping status='open' to 'closed' once a deadline
+    # passes, so catch any of this org's events up here too, in case nobody
+    # has loaded that specific event's own page yet to trigger it there.
+    events.filter(status='open', deadline__lt=now).update(status='closed')
+
     return render(request, 'organisations/organisation_detail.html', {
         'organisation': organisation,
         'vendors': organisation.vendors.annotate(menu_item_count=Count('menu_items')),

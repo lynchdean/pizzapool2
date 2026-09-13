@@ -1,6 +1,7 @@
 # orders/models.py
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.utils import timezone
 from events.models import Event
 from vendors.models import MenuItem
 from phonenumber_field.modelfields import PhoneNumberField
@@ -23,8 +24,12 @@ class Order(models.Model):
 
     def clean(self):
         super().clean()
-        if self._state.adding and self.event_id and self.event.status != "open":
-            raise ValidationError("Cannot create an order for an event that is not open.")
+        if self._state.adding and self.event_id:
+            # Deadline is checked alongside status for the same reason as
+            # orders/services.py:_ensure_event_open - there's no background
+            # job flipping status the instant a deadline passes.
+            if self.event.status != "open" or self.event.deadline < timezone.now():
+                raise ValidationError("Cannot create an order for an event that is not open.")
 
     def save(self, *args, **kwargs):
         if not self.public_id:

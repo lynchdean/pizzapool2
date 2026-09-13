@@ -27,6 +27,25 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+# Error monitoring - a complete no-op unless SENTRY_DSN is actually set, so
+# nothing changes for local dev or CI until a real Sentry project is
+# deliberately wired up in production. Initialized this early (before the
+# rest of settings.py) so it can catch problems in anything below too.
+SENTRY_DSN = config('SENTRY_DSN', default='')
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        environment='development' if DEBUG else 'production',
+        traces_sample_rate=0.1,
+        # This app handles real names and phone numbers - don't send that
+        # to a third party without a deliberate decision to.
+        send_default_pii=False,
+    )
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 
 # Needed once real HTTPS traffic reaches this app through a reverse proxy -
@@ -54,6 +73,16 @@ SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 # used in front of this app MUST strip/overwrite any client-supplied
 # X-Forwarded-Proto before it reaches Django, or this becomes spoofable.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Like SECURE_SSL_REDIRECT above, these only make sense once real HTTPS is
+# actually being served - default is 0 (HSTS header not sent at all), so
+# this is a no-op until explicitly turned on in production by setting
+# SECURE_HSTS_SECONDS to a real value (once SECURE_SSL_REDIRECT is on and
+# HTTPS is confirmed working - browsers cache this aggressively, so don't
+# turn it on before that's true).
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
+SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
 
 # security.W008 (SECURE_SSL_REDIRECT) and W004 (SECURE_HSTS_SECONDS) are
 # deliberately deferred until a domain and working HTTPS actually exist:

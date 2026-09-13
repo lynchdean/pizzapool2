@@ -30,7 +30,7 @@ class ClaimPortionsByQuantityTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
@@ -63,12 +63,26 @@ class ClaimPortionsByQuantityTests(TestCase):
                     0,
                 )
 
+    def test_claim_raises_event_not_open_error_once_deadline_passes(self):
+        # status is still 'open' in the DB - nothing has written 'closed' yet
+        # (no background job does that) - but the deadline itself has passed,
+        # which must block the claim regardless.
+        self.event.deadline = timezone.now() - timezone.timedelta(minutes=1)
+        self.event.save()
+
+        with self.assertRaises(EventNotOpenError):
+            claim_portions_by_quantity(self.event, [(self.order.id, 1)], "Bob")
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
+        )
+
     def test_claim_raises_not_enough_portions_when_order_belongs_to_different_event(self):
         other_event = Event.objects.create(
             organisation=self.organisation,
             vendor=self.vendor,
             name="Other Event",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
 
@@ -91,7 +105,7 @@ class CreateOrderTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
 
@@ -113,8 +127,26 @@ class CreateOrderTests(TestCase):
 
                 self.assertFalse(Order.objects.filter(event=self.event).exists())
 
+    def test_create_order_raises_event_not_open_error_once_deadline_passes(self):
+        self.event.deadline = timezone.now() - timezone.timedelta(minutes=1)
+        self.event.save()
+
+        with self.assertRaises(EventNotOpenError):
+            create_order(self.event, self.menu_item)
+
+        self.assertFalse(Order.objects.filter(event=self.event).exists())
+
     def test_order_clean_raises_validation_error_when_event_not_open(self):
         self.event.status = "locked"
+        self.event.save()
+
+        order = Order(event=self.event, menu_item=self.menu_item)
+
+        with self.assertRaises(ValidationError):
+            order.full_clean()
+
+    def test_order_clean_raises_validation_error_once_deadline_passes(self):
+        self.event.deadline = timezone.now() - timezone.timedelta(minutes=1)
         self.event.save()
 
         order = Order(event=self.event, menu_item=self.menu_item)
@@ -141,7 +173,7 @@ class JoinOrderViewTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
@@ -255,7 +287,7 @@ class UnclaimPortionViewTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)
@@ -318,6 +350,19 @@ class UnclaimPortionViewTests(TestCase):
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 2
         )
 
+    def test_blocked_and_unchanged_once_deadline_passes(self):
+        self.event.deadline = timezone.now() - timezone.timedelta(minutes=1)
+        self.event.save()
+
+        response = self.client.post(
+            self.url, {"claimant_phone": "+353871234567"}, follow=True
+        )
+
+        self.assertContains(response, "no longer open, so claims")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 2
+        )
+
     def test_exceeding_rate_limit_blocks_further_attempts(self):
         data = {"claimant_phone": "+353879999999"}  # wrong number: fast, no side effects
 
@@ -353,7 +398,7 @@ class StartOrderViewTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.url = reverse("orders:start_order", args=[self.event.public_id])
@@ -473,7 +518,7 @@ class DeleteOrderServiceTests(TestCase):
         )
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
 
@@ -511,7 +556,7 @@ class DeleteOrderViewTests(TestCase):
         )
         self.event = Event.objects.create(
             organisation=self.organisation, vendor=self.vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.order = Order.objects.create(event=self.event, menu_item=self.menu_item)

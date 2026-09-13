@@ -5,11 +5,23 @@ from events.models import Event
 from .models import Portion, Order
 
 
+def _ensure_event_open(locked_event):
+    """
+    Raises EventNotOpenError unless the event is genuinely open right now.
+    Checks the deadline as well as status: this app has no background job to
+    flip status='open' to 'closed' the instant a deadline passes (status gets
+    updated opportunistically elsewhere, e.g. on page load), so relying on
+    status alone would let a claim through in the window between the
+    deadline passing and something next writing the new status.
+    """
+    if locked_event.status != "open" or locked_event.deadline < timezone.now():
+        raise EventNotOpenError(locked_event.pk, locked_event.status)
+
+
 def create_order(event, menu_item):
     with transaction.atomic():
         locked_event = Event.objects.select_for_update().get(pk=event.pk)
-        if locked_event.status != "open":
-            raise EventNotOpenError(locked_event.pk, locked_event.status)
+        _ensure_event_open(locked_event)
         return Order.objects.create(event=locked_event, menu_item=menu_item)
 
 
@@ -50,8 +62,7 @@ def claim_portions_by_quantity(event, requests, claimant_name, claimant_phone=No
 
     with transaction.atomic():
         locked_event = Event.objects.select_for_update().get(pk=event.pk)
-        if locked_event.status != "open":
-            raise EventNotOpenError(locked_event.pk, locked_event.status)
+        _ensure_event_open(locked_event)
 
         for order_id, quantity in sorted_requests:
             if quantity <= 0:
@@ -94,8 +105,7 @@ def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_ph
     """
     with transaction.atomic():
         locked_event = Event.objects.select_for_update().get(pk=event.pk)
-        if locked_event.status != "open":
-            raise EventNotOpenError(locked_event.pk, locked_event.status)
+        _ensure_event_open(locked_event)
 
         order = Order.objects.create(
             event=locked_event, menu_item=menu_item, revolut_username=revolut_username or None,
@@ -129,8 +139,7 @@ def unclaim_portions(event, order_id, claimant_phone):
     """
     with transaction.atomic():
         locked_event = Event.objects.select_for_update().get(pk=event.pk)
-        if locked_event.status != "open":
-            raise EventNotOpenError(locked_event.pk, locked_event.status)
+        _ensure_event_open(locked_event)
 
         portions = list(
             Portion.objects

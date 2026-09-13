@@ -3,6 +3,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from orders.models import Order, Portion
 from organisations.models import Organisation
@@ -25,6 +26,16 @@ def event_detail(request, org_slug, event_id):
         Event.objects.select_related('vendor', 'organisation'),
         public_id=event_id, organisation__slug=org_slug,
     )
+
+    # No background job flips status='open' to 'closed' the instant a
+    # deadline passes (orders/services.py enforces the actual cutoff
+    # regardless of this field) - this just keeps what's displayed/stored
+    # accurate for whoever happens to load the page next. The event page
+    # polls every 15s while open, so this alone self-corrects within one
+    # poll cycle of the deadline passing.
+    if event.status == 'open' and event.deadline < timezone.now():
+        event.status = 'closed'
+        event.save()
 
     portion_qs = Portion.objects.filter(claimant_name__isnull=False).order_by('claimed_at', 'id')
 

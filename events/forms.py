@@ -30,11 +30,25 @@ class EventForm(forms.ModelForm):
             self.fields['vendor'].disabled = True
             self.fields['vendor'].help_text = "Can't change vendor once orders exist for this event."
 
-    def clean_deadline(self):
-        deadline = self.cleaned_data['deadline']
-        if not self.instance.pk and deadline <= timezone.now():
-            raise forms.ValidationError("Deadline must be in the future.")
-        return deadline
+    def clean(self):
+        cleaned_data = super().clean()
+        deadline = cleaned_data.get('deadline')
+        status = cleaned_data.get('status')
+
+        # Required for brand-new events regardless of status, and for any
+        # event (new or existing) being saved as 'open' - reopening a
+        # past-deadline event without pushing the deadline forward would
+        # immediately be blocked by orders/services.py's deadline check
+        # anyway, and the next page load's auto-close would flip it right
+        # back to 'closed'. Pushing the deadline forward is the actual "give
+        # it a final window" action, not a side detail.
+        if deadline is not None and deadline <= timezone.now():
+            if not self.instance.pk:
+                self.add_error('deadline', "Deadline must be in the future.")
+            elif status == 'open':
+                self.add_error('deadline', "Deadline must be in the future to reopen this event.")
+
+        return cleaned_data
 
     def save(self, commit=True):
         event = super().save(commit=False)

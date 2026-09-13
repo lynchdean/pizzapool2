@@ -200,7 +200,7 @@ class OrganisationDetailViewTests(TestCase):
             organisation=self.organisation,
             vendor=self.vendor,
             name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
         self.url = reverse("organisations:organisation_detail", args=[self.organisation.slug])
@@ -223,6 +223,20 @@ class OrganisationDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertNotContains(response, '<p></p>')
+
+    def test_stale_open_event_flips_to_closed_on_dashboard_load(self):
+        expired = Event.objects.create(
+            organisation=self.organisation, vendor=self.vendor, name="Expired Event",
+            deadline=timezone.now() - timezone.timedelta(minutes=1),
+            status='open',
+        )
+
+        response = self.client.get(self.url)
+
+        expired.refresh_from_db()
+        self.assertEqual(expired.status, 'closed')
+        self.assertContains(response, "Expired Event")
+        self.assertContains(response, "Closed")
 
     def test_events_ordered_by_deadline_not_creation_order(self):
         # Created deliberately out of deadline order, so ordering by pk/
@@ -598,7 +612,7 @@ class OrganisationImageTests(TestCase):
         vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
         event = Event.objects.create(
             organisation=self.organisation, vendor=vendor, name="Friday Lunch",
-            deadline=timezone.now(),
+            deadline=timezone.now() + timezone.timedelta(days=1),
             status='open',
         )
 
