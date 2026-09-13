@@ -82,7 +82,12 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # turn it on before that's true).
 SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
-SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
+# Defaults off unlike the two above: preload means submitting to a list
+# baked into browsers themselves, which takes weeks to months to undo even
+# after this header stops being sent. Keep this a deliberate opt-in once
+# HSTS has run cleanly in production for a while, not something that turns
+# on automatically the moment SECURE_HSTS_SECONDS is set.
+SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
 
 # security.W008 (SECURE_SSL_REDIRECT) and W004 (SECURE_HSTS_SECONDS) are
 # deliberately deferred until a domain and working HTTPS actually exist:
