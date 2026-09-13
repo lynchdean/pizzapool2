@@ -16,6 +16,7 @@ CURRENCY_SYMBOLS = {code: label.rsplit("(", 1)[1].rstrip(")") for code, label in
 class Organisation(models.Model):
     name = models.CharField(max_length=255, unique=True)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
+    description = models.TextField(blank=True)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="EUR")
     image = models.ImageField(upload_to='organisation_images/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

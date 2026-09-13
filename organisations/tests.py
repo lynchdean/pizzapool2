@@ -211,6 +211,19 @@ class OrganisationDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Friday Lunch")
 
+    def test_description_shown_when_set(self):
+        self.organisation.description = "The office pizza fund."
+        self.organisation.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "The office pizza fund.")
+
+    def test_no_description_paragraph_when_blank(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, '<p></p>')
+
     def test_events_ordered_by_deadline_not_creation_order(self):
         # Created deliberately out of deadline order, so ordering by pk/
         # creation time (the old default) would disagree with this.
@@ -394,6 +407,25 @@ class OrganisationEditViewTests(TestCase):
 
         self.organisation.refresh_from_db()
         self.assertEqual(self.organisation.currency, "GBP")
+
+    def test_post_updates_description(self):
+        self.client.force_login(self.member)
+
+        self.client.post(self.url, {
+            "name": "Acme", "currency": "EUR", "description": "The office pizza fund.",
+        })
+
+        self.organisation.refresh_from_db()
+        self.assertEqual(self.organisation.description, "The office pizza fund.")
+
+    def test_description_is_optional(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(self.url, {"name": "Acme", "currency": "EUR"})
+
+        self.assertEqual(response.status_code, 302)
+        self.organisation.refresh_from_db()
+        self.assertEqual(self.organisation.description, "")
 
 
 class LoginLogoutTests(TestCase):
