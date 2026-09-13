@@ -4,6 +4,9 @@
 <div class="detail-header">
   {% if organisation.image %}<img src="{{ organisation.image.url }}" alt="" class="org-image">{% endif %}
   <h1>{{ organisation.name }}</h1>
+  {% if organisation.description %}
+    <p>{{ organisation.description|linebreaksbr }}</p>
+  {% endif %}
 </div>
 
 {% if can_manage %}
