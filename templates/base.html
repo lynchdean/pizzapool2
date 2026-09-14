@@ -18,6 +18,21 @@
   <link rel="stylesheet" href="{% static 'css/pico.min.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
   <style>
+    /* Guards against phantom horizontal scroll on narrow viewports: an
+       absolutely-positioned element (e.g. the starter-claim tooltip below)
+       still contributes to the page's scrollable width once it extends
+       past the viewport edge, even at opacity:0/not hovered - confirmed by
+       measuring document.documentElement.scrollWidth with that tooltip
+       disabled vs not. This is a blanket guard rather than only fixing that
+       one tooltip, since the same quirk could bite any future
+       absolutely-positioned element too. Set on both html and body -
+       overflow-x on body alone should propagate to the viewport per spec,
+       but that propagation didn't actually stop the page from scrolling
+       here, so both are set directly rather than relying on it. */
+    html, body {
+      overflow-x: hidden;
+    }
+
     /* Re-tint Pico's default accent colour (buttons, links, focus rings) to
        the brand red. Pico defines these same variables again inside its own
        light/dark theme selectors (:root:not([data-theme=dark]),
@@ -327,6 +342,16 @@
       justify-content: center;
       padding: 0.15rem 0.5rem;
       color: var(--pico-muted-color);
+      /* Pico's tooltip defaults to its "contrast" colour role (inverted
+         relative to the page - stark white-on-black in dark mode), which
+         reads as broken/mismatched against this app's actual dark theme.
+         Its "secondary" role is a fixed muted navy-grey regardless of
+         theme, matching the outline buttons/icon-buttons used everywhere
+         else in the app, so it never clashes with either theme. These are
+         the same custom properties Pico's own tooltip CSS reads from, so
+         no need to fight its background/color declarations directly. */
+      --pico-tooltip-background-color: var(--pico-secondary-background);
+      --pico-tooltip-color: var(--pico-secondary-inverse);
     }
     /* Pico's tooltip text is nowrap and centred on the trigger by default,
        which overflows the viewport for a sentence-length tooltip on an
@@ -337,6 +362,30 @@
       width: max-content;
       max-width: 220px;
       text-align: center;
+      /* Pico centres this on the trigger by default (left:50%), which is
+         fine on desktop but the icon sits close to the card's right edge -
+         on narrow viewports the centred box got clipped by the
+         overflow-x:hidden guard above instead of leaking page width like
+         it used to. Right-anchoring it to the icon instead means it only
+         grows leftward, into the room that's actually there. */
+      left: auto;
+      right: 0;
+      transform: translateY(-0.25rem);
+    }
+    /* Pico's hover/focus reveal is a keyframe animation (tooltip-slide),
+       which - being a CSS animation - overrides the plain transform above
+       regardless of selector specificity for as long as it's running. That
+       animation still slides from/to the old centred (translateX(-50%))
+       position by default, so once triggered the box visibly jumped away
+       from the right-anchored spot set above. Redeclaring both the
+       animation's start transform and its --pico-tooltip-slide-to end
+       target (same two values Pico's own :hover/:focus rule sets) keeps
+       the whole animation consistent with the right-anchored position
+       instead of fighting it. */
+    .claimant-starter-icon[data-tooltip]:hover::before,
+    .claimant-starter-icon[data-tooltip]:focus::before {
+      --pico-tooltip-slide-to: translateY(-0.25rem);
+      transform: translateY(0.75rem);
     }
     /* Forced onto its own line unconditionally (not just wrapped when
        narrow) so the card header reads the same on mobile and desktop,
