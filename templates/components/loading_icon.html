@@ -1,0 +1,24 @@
+{% load static %}
+<span class="loading-icon" role="status" aria-label="Loading, {{ lit_count }} of 3">
+  <span class="loading-icon-slice loading-icon-slice-left">
+    {% if left_lit %}
+      <img src="{% static 'img/logo-red.png' %}" alt="">
+    {% else %}
+      <img src="{% static 'img/logo-headless-grey.png' %}" alt="">
+    {% endif %}
+  </span>
+  <span class="loading-icon-slice loading-icon-slice-top">
+    {% if top_lit %}
+      <img src="{% static 'img/logo-red.png' %}" alt="">
+    {% else %}
+      <img src="{% static 'img/logo-headless-grey.png' %}" alt="">
+    {% endif %}
+  </span>
+  <span class="loading-icon-slice loading-icon-slice-right">
+    {% if right_lit %}
+      <img src="{% static 'img/logo-red.png' %}" alt="">
+    {% else %}
+      <img src="{% static 'img/logo-headless-grey.png' %}" alt="">
+    {% endif %}
+  </span>
+</span>

@@ -140,17 +140,8 @@
     .step-card {
       text-align: center;
     }
-    .step-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.25rem;
-      height: 2.25rem;
-      border-radius: 50%;
-      background: var(--pico-primary-background);
-      color: var(--pico-primary-inverse);
-      font-weight: 600;
-      margin-bottom: 0.5rem;
+    .step-card .loading-icon {
+      margin-bottom: 0.15rem;
     }
     .step-card strong {
       display: block;
@@ -161,22 +152,73 @@
       color: var(--pico-muted-color);
     }
 
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem 2rem;
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0;
+      margin: 0;
     }
     .feature-item {
       display: flex;
-      align-items: flex-start;
-      gap: 0.6rem;
+      align-items: center;
+      gap: 0.85rem;
       margin-bottom: 0;
+      padding: 0.85rem 1rem;
+      background: var(--pico-card-sectioning-background-color);
+      border-radius: var(--pico-border-radius);
     }
-    .feature-item svg {
+    .feature-item-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
-      margin-top: 0.2rem;
-      color: var(--pico-primary-background);
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--pico-primary-background);
+      color: var(--pico-primary-inverse);
     }
+
+    /* Reusable loading_icon template tag (organisations/templatetags/
+       pizzapool_extras.py) - three copies of the logo mark rotated 60deg
+       apart so each points tip-to-centre like a pizza slice, then pushed
+       outward along that same rotated axis so position and orientation
+       stay in sync. Lit vs unlit is which asset is rendered (logo-red.png
+       vs logo-headless-grey.png - same claimed/available convention as
+       events/templates/events/event_detail.html's portion-tracker), not a
+       CSS filter. Static for now (n is fixed per render), but each slice
+       is its own element, so a future animated variant could just cycle
+       which ones are lit via JS/CSS, no markup changes needed. */
+    .loading-icon {
+      position: relative;
+      display: inline-block;
+      width: 88px;
+      height: 56px;
+    }
+    .loading-icon-slice {
+      /* Anchored below centre (not top:50%) because the fan only occupies
+         the top half of a would-be circle: the rotation pivot all three
+         transforms below share sits 45.5px below the fan's top edge but
+         only 6.5px above its bottom edge, not equidistant - a 50% anchor
+         leaves the box exactly as tall as the old full 6-slice ring, with
+         dead space below where the removed bottom half used to be. */
+      position: absolute;
+      top: 47.5px;
+      left: 50%;
+      width: 39px;
+      height: 39px;
+      margin: -19.5px 0 0 -19.5px;
+    }
+    .loading-icon-slice img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .loading-icon-slice-left { transform: rotate(-60deg) translateY(-26px); }
+    .loading-icon-slice-top { transform: rotate(0deg) translateY(-26px); }
+    .loading-icon-slice-right { transform: rotate(60deg) translateY(-26px); }
 
     li.success { color: var(--pico-ins-color); }
     li.error { color: var(--pico-del-color); }

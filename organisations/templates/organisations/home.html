@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load pizzapool_extras %}
 
 {% block content %}
 <section class="home-hero">
@@ -22,18 +23,18 @@
   <header><strong>How it works</strong></header>
   <div class="grid">
     <div class="step-card">
-      <span class="step-number">1</span>
+      {% loading_icon n=1 %}
       <strong>Create an event</strong>
-      <p>Pick a vendor - a pizza night, a team lunch, whatever it is.</p>
+      <p>Set your vendor - a pizza slice shop, a lunch spot, whatever it is.</p>
     </div>
     <div class="step-card">
-      <span class="step-number">2</span>
-      <strong>Share the link</strong>
-      <p>Each item automatically splits into individually claimable portions.</p>
+      {% loading_icon n=2 %}
+      <strong>Share the link to your next event</strong>
+      <p>Each order automatically splits into individually claimable portions.</p>
     </div>
     <div class="step-card">
-      <span class="step-number">3</span>
-      <strong>People claim their share</strong>
+      {% loading_icon n=3 %}
+      <strong>People can start or join orders.</strong>
       <p>Just a name and phone number - no sign-up required.</p>
     </div>
   </div>
@@ -41,23 +42,27 @@
 
 <article>
   <header><strong>Built for group orders</strong></header>
-  <div class="feature-grid">
-    <p class="feature-item">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      <span>Large orders split fairly into individual portions, so nobody overpays or gets left out.</span>
-    </p>
-    <p class="feature-item">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  <ul class="feature-list">
+    <li class="feature-item">
+      <span class="feature-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+      <span>Skip the queues. Rather than having to wait in line, orders are consolidated meaning you can send it directly to the vendor ahead of time.</span>
+    </li>
+    <li class="feature-item">
+      <span class="feature-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+      <span>Social by design, encourages participants to join orders with new people and chat with them.</span>
+    </li>
+    <li class="feature-item">
+      <span class="feature-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+      <span>Large orders split evenly into individual portions, so nobody overpays or gets left out.</span>
+    </li>
+    <li class="feature-item">
+      <span class="feature-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
       <span>Participants don't need an account - just a name and phone number to claim their share.</span>
-    </p>
-    <p class="feature-item">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </li>
+    <li class="feature-item">
+      <span class="feature-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
       <span>Organisers stay in control: lock an event once it's full, and see exactly what to order.</span>
-    </p>
-    <p class="feature-item">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      <span>Social by design, encourages people to join orders with people and get to know them better.</span>
-    </p>
-  </div>
+    </li>
+  </ul>
 </article>
 {% endblock %}
