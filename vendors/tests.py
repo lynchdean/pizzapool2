@@ -231,6 +231,23 @@ class MenuItemViewTests(TestCase):
         )
         self.assertTrue(MenuItem.objects.filter(vendor=self.vendor, name="Pepperoni").exists())
 
+    def test_create_menu_item_with_custom_portion_label(self):
+        url = reverse("organisations:menu_item_create", args=[self.organisation.slug, self.vendor.id])
+
+        self.client.post(
+            url,
+            {"name": "Pepperoni", "portions_per_unit": 8, "portion_label": "slice", "price": "15.00", "is_active": "on"},
+        )
+
+        item = MenuItem.objects.get(vendor=self.vendor, name="Pepperoni")
+        self.assertEqual(item.portion_label, "slice")
+        self.assertEqual(item.portion_word(), "slice")
+
+    def test_portion_label_is_optional_and_falls_back_to_portion(self):
+        # self.item (setUp) was created without a portion_label.
+        self.assertEqual(self.item.portion_label, "")
+        self.assertEqual(self.item.portion_word(), "portion")
+
     def test_duplicate_name_for_same_vendor_shows_form_error(self):
         url = reverse("organisations:menu_item_create", args=[self.organisation.slug, self.vendor.id])
 

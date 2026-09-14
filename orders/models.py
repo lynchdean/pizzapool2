@@ -18,6 +18,17 @@ class Order(models.Model):
     # (see orders/forms.py:StartOrderForm).
     revolut_username = models.CharField(max_length=16, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Set once, at creation, by orders/services.py:start_order_and_claim - the
+    # name shown as "<name>'s order" in event_detail.html. Deliberately its
+    # own persisted field rather than derived from whichever Portion currently
+    # has the earliest claimed_at: that derivation let anyone unclaim the
+    # starter's portions, claim their own, and rename the order to themselves.
+    started_by_name = models.CharField(max_length=255, blank=True)
+    # Set once, at creation, alongside started_by_name - lets a joiner who
+    # can't pay via Revolut contact the starter directly to arrange payment
+    # some other way. Same "persist at creation, don't derive from live
+    # claim data" reasoning as started_by_name.
+    started_by_phone = PhoneNumberField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.menu_item} for {self.event}"
@@ -58,6 +69,12 @@ class Portion(models.Model):
     claimant_name = models.CharField(max_length=255, blank=True, null=True)
     claimant_phone = PhoneNumberField(blank=True, null=True)
     claimed_at = models.DateTimeField(blank=True, null=True)
+    # Set once, at creation, by orders/services.py:start_order_and_claim for
+    # the portions the starter claims for themselves - excluded from
+    # unclaim_portions so the reservation an order was started with can't be
+    # freed up and reclaimed by someone else out from under it. Stays True
+    # forever once set, regardless of what happens to the claim afterward.
+    is_starter_claim = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("order", "portion_number")

@@ -32,7 +32,7 @@
   {% for item, item_form in item_forms %}
     <details {% if item_form.errors %}open{% endif %}>
       <summary>
-        {{ item.name }} · {{ item.portions_per_unit }} portion{{ item.portions_per_unit|pluralize }} ·
+        {{ item.name }} · {{ item.portions_per_unit }} {{ item.portion_word }}{{ item.portions_per_unit|pluralize }} ·
         {{ vendor.organisation.currency_symbol }}{{ item.price }} ·
         {% if item.is_active %}Active{% else %}Inactive{% endif %}
       </summary>
@@ -41,6 +41,7 @@
         <fieldset class="menu-item-fields">
           {{ item_form.name }}
           {{ item_form.portions_per_unit }}
+          {{ item_form.portion_label }}
           <span class="currency-input">
             <span class="currency-symbol">{{ vendor.organisation.currency_symbol }}</span>
             {{ item_form.price }}

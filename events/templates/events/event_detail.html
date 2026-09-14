@@ -15,11 +15,25 @@
 
 {% if can_manage %}
 <div class="action-bar">
-  <a href="{% url 'organisations:event_edit' event.organisation.slug event.public_id %}" role="button" class="secondary outline icon-text">
+  <a href="{% url 'organisations:event_edit' event.organisation.slug event.public_id %}" role="button" class="secondary icon-text">
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
     </svg>
     Edit event
+  </a>
+  <a href="{% url 'organisations:organisation_detail' event.organisation.slug %}" role="button" class="secondary outline icon-text">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Go to organisation
+  </a>
+  <a href="{% url 'organisations:vendor_detail' event.organisation.slug event.vendor.id %}" role="button" class="secondary outline icon-text">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Go to vendor
   </a>
 </div>
 {% endif %}
@@ -29,7 +43,7 @@
   <summary role="button" class="secondary outline">Menu options ({{ active_menu_items|length }})</summary>
   <ul>
     {% for item in active_menu_items %}
-      <li>{{ item.name }}{% if item.price_per_portion %}, {{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/portion, {{ event.organisation.currency_symbol }}{{ item.price }} total{% endif %}</li>
+      <li>{{ item.name }}{% if item.price_per_portion %}, {{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/{{ item.portion_word }}, {{ event.organisation.currency_symbol }}{{ item.price }} total{% endif %}</li>
     {% endfor %}
   </ul>
 </details>
@@ -62,13 +76,13 @@
      hx-swap="outerHTML"
      {% endif %}>
   {% for order in orders %}
-  <article class="order-card">
+  <article class="order-card{% if order.is_stalled %} order-card--stalled{% endif %}">
     <header>
       <div>
-        <strong>{% if order.started_by %}{{ order.started_by.name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}</strong>
+        <strong>{% if order.started_by_name %}{{ order.started_by_name }}'s order{% else %}Order #{{ forloop.counter }}{% endif %}</strong>
         · {{ order.menu_item.name }}
         <div class="order-card-meta">
-          {% if order.price_per_portion %}{{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/portion{% endif %}
+          {% if order.price_per_portion %}{{ event.organisation.currency_symbol }}{{ order.price_per_portion }}/{{ order.menu_item.portion_word }}{% endif %}
           {% if order.status_label %}· {{ order.status_label }}{% endif %}
           {% if order.revolut_username %}· Revolut: {{ order.revolut_username }}{% endif %}
         </div>
@@ -94,7 +108,15 @@
         {% for claimant in order.claimants %}
           <li>
             <span>{{ claimant.name }} · {{ claimant.phone }} · ×{{ claimant.quantity }}</span>
-            {% if event.status == 'open' %}
+            {% if claimant.is_starter %}
+              <span class="claimant-starter-icon" tabindex="0"
+                    aria-label="Can't be cancelled - these are the {{ order.menu_item.portion_word }}s the order was started with"
+                    data-tooltip="Can't be cancelled - these are the {{ order.menu_item.portion_word }}s the order was started with">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+              </span>
+            {% elif event.status == 'open' %}
               <form method="post" action="{% url 'orders:unclaim_portion' order.public_id %}"
                     style="display:inline" onsubmit="return confirm('Cancel this claim?');">
                 {% csrf_token %}
@@ -123,7 +145,7 @@
 
     {% if event.status == 'open' and order.available_count > 0 %}
       <details class="claim-accordion" id="claim-accordion-{{ order.public_id }}">
-        <summary role="button" class="secondary outline">Claim a portion ({{ order.available_count }} left)</summary>
+        <summary role="button" class="secondary outline">Claim a {{ order.menu_item.portion_word }} ({{ order.available_count }} left)</summary>
         <form method="post" action="{% url 'orders:join_order' order.public_id %}">
           {% csrf_token %}
           <div class="grid">
@@ -131,9 +153,9 @@
             <input type="tel" name="claimant_phone" placeholder="Phone number" required>
           </div>
           <div class="grid">
-            <select name="quantity" aria-label="Number of portions" class="quantity-select" data-price="{{ order.price_per_portion|default:'' }}" data-currency="{{ event.organisation.currency_symbol }}">
+            <select name="quantity" aria-label="Number of {{ order.menu_item.portion_word }}s" class="quantity-select" data-price="{{ order.price_per_portion|default:'' }}" data-currency="{{ event.organisation.currency_symbol }}">
               {% for n in order.available_range %}
-                <option value="{{ n }}">{{ n }} portion{{ n|pluralize }}</option>
+                <option value="{{ n }}">{{ n }} {{ order.menu_item.portion_word }}{{ n|pluralize }}</option>
               {% endfor %}
             </select>
             <button type="submit" data-label="Join">Join</button>
@@ -143,10 +165,17 @@
     {% endif %}
 
     {% if event.status == 'closed' or event.status == 'submitted' %}
-      {% if order.is_fully_claimed and order.revolut_username %}
-        <a href="https://revolut.me/{{ order.revolut_username }}" role="button" target="_blank" rel="noopener">
-          Pay {{ order.revolut_username }} on Revolut
-        </a>
+      {% if order.is_fully_claimed %}
+        {% if order.revolut_username %}
+          <a href="https://revolut.me/{{ order.revolut_username }}" role="button" target="_blank" rel="noopener">
+            Pay {{ order.revolut_username }} on Revolut
+          </a>
+        {% endif %}
+        {% if order.started_by_phone %}
+          <p class="order-contact-note">
+            {% if order.revolut_username %}No Revolut? {% endif %}Contact {{ order.started_by_name }} at {{ order.started_by_phone }} to arrange payment.
+          </p>
+        {% endif %}
       {% endif %}
     {% endif %}
   </article>
@@ -168,7 +197,7 @@
         <select name="menu_item_id" class="menu-item-select" required>
           <option value="" disabled selected>Choose a menu item</option>
           {% for item in active_menu_items %}
-            <option value="{{ item.id }}" data-portions="{{ item.portions_per_unit }}" data-price="{{ item.price_per_portion|default:'' }}">{{ item.name }} ({% if item.price_per_portion %}{{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/portion, {% endif %}{{ event.organisation.currency_symbol }}{{ item.price }} total)</option>
+            <option value="{{ item.id }}" data-portions="{{ item.portions_per_unit }}" data-portion-word="{{ item.portion_word }}" data-price="{{ item.price_per_portion|default:'' }}">{{ item.name }} ({% if item.price_per_portion %}{{ event.organisation.currency_symbol }}{{ item.price_per_portion }}/{{ item.portion_word }}, {% endif %}{{ event.organisation.currency_symbol }}{{ item.price }} total)</option>
           {% endfor %}
         </select>
         <select name="quantity" aria-label="Number of portions to reserve for yourself" class="portions-select quantity-select" data-currency="{{ event.organisation.currency_symbol }}" required disabled>

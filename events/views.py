@@ -44,6 +44,11 @@ def event_detail(request, org_slug, event_id):
     # pause), and 'closed' is just staged to send to the vendor, not yet
     # sent. Only 'submitted' means the order has actually gone out.
     is_finalized = event.status == 'submitted'
+    # Claims are blocked in both 'closed' and 'submitted' (orders/services.py's
+    # _ensure_event_open requires status == 'open'), so a partial order is
+    # equally stalled in either - used below to label/group/grey it out
+    # consistently across both, not just once finalized.
+    claiming_stopped = event.status in ('closed', 'submitted')
 
     orders = (
         Order.objects.filter(event=event)
@@ -60,16 +65,24 @@ def event_detail(request, org_slug, event_id):
 
         # A full order is guaranteed to proceed regardless of event status,
         # but it's only actually "Confirmed" once the event is finalized;
-        # before then it's just full, not yet locked in. A partial order's
-        # fate is only decided once the event is finalized.
+        # before then it's just full, not yet locked in. A partial order is
+        # labelled the same way once claiming has stopped for it: 'closed'
+        # already blocks new claims (orders/services.py's _ensure_event_open
+        # requires status == 'open'), so it's just as "incomplete" as a
+        # submitted one - only the wording differs, since 'closed' can still
+        # be reopened with a later deadline and 'submitted' can't.
         if order.is_fully_claimed:
             order.status_label = "Confirmed" if is_finalized else "Full"
         elif is_finalized:
             order.status_label = "Incomplete, will not proceed"
+        elif event.status == 'closed':
+            order.status_label = "Incomplete"
         else:
-            # Still open and not full - the "Claim a slice (N left)" button
-            # already shows the remaining count, so no header label needed.
+            # Still open (or locked, a reusable pause) and not full - the
+            # "Claim a slice (N left)" button already shows the remaining
+            # count, so no header label needed.
             order.status_label = None
+        order.is_stalled = claiming_stopped and not order.is_fully_claimed
 
         claimants = {}
         for portion in order.claimed_portions:
@@ -78,10 +91,12 @@ def event_detail(request, org_slug, event_id):
                 'name': portion.claimant_name,
                 'phone': portion.claimant_phone,
                 'quantity': 0,
+                'is_starter': False,
             })
             group['quantity'] += 1
+            if portion.is_starter_claim:
+                group['is_starter'] = True
         order.claimants = list(claimants.values())
-        order.started_by = order.claimants[0] if order.claimants else None
 
         if order.menu_item.portions_per_unit:
             order.price_per_portion = (
@@ -89,6 +104,13 @@ def event_detail(request, org_slug, event_id):
             ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         else:
             order.price_per_portion = None
+
+    if claiming_stopped:
+        # Complete orders first once nothing can change further - lets an
+        # organiser (or anyone checking in) see what's actually happening
+        # without hunting through stalled orders first. Python's sort is
+        # stable, so ties keep the existing created_at ordering.
+        orders = sorted(orders, key=lambda o: o.is_stalled)
 
     active_menu_items = list(event.vendor.menu_items.filter(is_active=True).order_by('name'))
     for item in active_menu_items:

@@ -12,10 +12,12 @@ from .services import (
     claim_portions_by_quantity,
     create_order,
     delete_order,
+    start_order_and_claim,
     unclaim_portions,
     ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
+    StarterClaimProtectedError,
 )
 
 
@@ -200,7 +202,15 @@ class JoinOrderViewTests(TestCase):
         claimed = Portion.objects.filter(order=self.order, claimant_name="Bob")
         self.assertEqual(claimed.count(), 2)
         self.assertTrue(claimed.exclude(claimant_phone="").exists())
-        self.assertContains(response, "Claimed 2 portion(s) of Margherita!")
+        self.assertContains(response, "Claimed 2 portions of Margherita!")
+
+    def test_success_message_uses_custom_portion_label(self):
+        self.menu_item.portion_label = "slice"
+        self.menu_item.save()
+
+        response = self.client.post(self.url, self.valid_data, follow=True)
+
+        self.assertContains(response, "Claimed 2 slices of Margherita!")
 
     def test_looking_up_by_raw_integer_pk_returns_404(self):
         url = reverse("orders:join_order", args=[str(self.order.pk)])
@@ -312,7 +322,7 @@ class UnclaimPortionViewTests(TestCase):
         self.assertEqual(
             Portion.objects.filter(order=self.order, claimant_name__isnull=False).count(), 0
         )
-        self.assertContains(response, "Cancelled 2 portion(s) of Margherita.")
+        self.assertContains(response, "Cancelled 2 portions of Margherita.")
 
     def test_post_with_nonmatching_reference_changes_nothing(self):
         # claimant_phone here is a reference key (see UnclaimForm/unclaim_portions),
@@ -386,6 +396,66 @@ class UnclaimPortionViewTests(TestCase):
         self.assertNotContains(response, "Too many attempts")
 
 
+class UnclaimStarterClaimTests(TestCase):
+    """
+    The portions claimed via start_order_and_claim (the starter's own
+    reservation) must never be releasable through unclaim_portions - doing
+    so would let anyone free them up, claim them under their own name, and
+    (before started_by_name existed) hijack the order's displayed name.
+    """
+
+    def setUp(self):
+        self.organisation = Organisation.objects.create(name="Acme")
+        self.vendor = Vendor.objects.create(organisation=self.organisation, name="Pizza Place")
+        self.menu_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        self.event = Event.objects.create(
+            organisation=self.organisation,
+            vendor=self.vendor,
+            name="Friday Lunch",
+            deadline=timezone.now() + timezone.timedelta(days=1),
+            status='open',
+        )
+        self.order, _ = start_order_and_claim(
+            self.event, self.menu_item, 2, "Alice", "+353871234567"
+        )
+        self.url = reverse("orders:unclaim_portion", args=[self.order.public_id])
+
+    def test_service_raises_starter_claim_protected_error(self):
+        with self.assertRaises(StarterClaimProtectedError):
+            unclaim_portions(self.event, self.order.id, "+353871234567")
+
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name="Alice").count(), 2
+        )
+
+    def test_view_shows_error_and_leaves_starter_portions_claimed(self):
+        response = self.client.post(
+            self.url, {"claimant_phone": "+353871234567"}, follow=True
+        )
+
+        self.assertContains(response, "can&#x27;t be cancelled this way")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name="Alice").count(), 2
+        )
+
+    def test_joiners_claim_on_the_same_order_can_still_be_unclaimed(self):
+        claim_portions_by_quantity(self.event, [(self.order.id, 1)], "Bob", "+353879999999")
+
+        response = self.client.post(
+            self.url, {"claimant_phone": "+353879999999"}, follow=True
+        )
+
+        self.assertContains(response, "Cancelled 1 portion of Margherita.")
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name="Bob").count(), 0
+        )
+        self.assertEqual(
+            Portion.objects.filter(order=self.order, claimant_name="Alice").count(), 2
+        )
+
+
 class StartOrderViewTests(TestCase):
     def setUp(self):
         self.organisation = Organisation.objects.create(name="Acme")
@@ -424,6 +494,19 @@ class StartOrderViewTests(TestCase):
         order = Order.objects.get(event=self.event, menu_item=self.menu_item)
         self.assertEqual(Portion.objects.filter(order=order, claimant_name="Alice").count(), 2)
         self.assertContains(response, "Started a new order for Margherita")
+
+    def test_post_sets_started_by_name_and_marks_starter_portions(self):
+        self.client.post(self.url, self.valid_data, follow=True)
+
+        order = Order.objects.get(event=self.event, menu_item=self.menu_item)
+        self.assertEqual(order.started_by_name, "Alice")
+        self.assertEqual(str(order.started_by_phone), "+353871234567")
+        self.assertEqual(
+            Portion.objects.filter(order=order, claimant_name="Alice", is_starter_claim=True).count(), 2
+        )
+        self.assertEqual(
+            Portion.objects.filter(order=order, claimant_name__isnull=True, is_starter_claim=True).count(), 0
+        )
 
     def test_post_rejects_inactive_menu_item(self):
         self.menu_item.is_active = False

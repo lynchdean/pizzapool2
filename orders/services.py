@@ -46,6 +46,12 @@ class ClaimNotFoundError(Exception):
         super().__init__(f"No claimed portions found on order {order_id} for that phone number")
 
 
+class StarterClaimProtectedError(Exception):
+    def __init__(self, order_id):
+        self.order_id = order_id
+        super().__init__(f"Order {order_id}: cannot unclaim the portions reserved when the order was started")
+
+
 def claim_portions_by_quantity(event, requests, claimant_name, claimant_phone=None):
     """
     event: the Event the given order_ids are expected to belong to. Re-fetched
@@ -109,10 +115,15 @@ def start_order_and_claim(event, menu_item, quantity, claimant_name, claimant_ph
 
         order = Order.objects.create(
             event=locked_event, menu_item=menu_item, revolut_username=revolut_username or None,
+            started_by_name=claimant_name,
+            started_by_phone=claimant_phone,
         )
         claimed = claim_portions_by_quantity(
             locked_event, [(order.id, quantity)], claimant_name, claimant_phone
         )
+        for portion in claimed:
+            portion.is_starter_claim = True
+        Portion.objects.bulk_update(claimed, ['is_starter_claim'])
 
     return order, claimed
 
@@ -148,6 +159,8 @@ def unclaim_portions(event, order_id, claimant_phone):
         )
         if not portions:
             raise ClaimNotFoundError(order_id)
+        if any(portion.is_starter_claim for portion in portions):
+            raise StarterClaimProtectedError(order_id)
 
         for portion in portions:
             portion.claimant_name = None

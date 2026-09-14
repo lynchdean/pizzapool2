@@ -3,6 +3,7 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
+from django.template.defaultfilters import pluralize
 from events.models import Event
 from organisations.permissions import user_is_organisation_owner
 from vendors.models import MenuItem
@@ -16,6 +17,7 @@ from .services import (
     ClaimNotFoundError,
     NotEnoughPortionsError,
     EventNotOpenError,
+    StarterClaimProtectedError,
 )
 
 
@@ -78,11 +80,15 @@ def join_order_view(request, order_id):
             form.cleaned_data['claimant_name'],
             form.cleaned_data['claimant_phone'],
         )
-        messages.success(request, f"Claimed {len(claimed)} portion(s) of {order.menu_item.name}!")
+        word = order.menu_item.portion_word()
+        messages.success(request, f"Claimed {len(claimed)} {word}{pluralize(len(claimed))} of {order.menu_item.name}!")
     except EventNotOpenError:
         messages.error(request, f"'{event.name}' is no longer open for claims.")
     except NotEnoughPortionsError:
-        messages.error(request, f"Sorry, someone else just claimed those {order.menu_item.name} portions. Please try again.")
+        messages.error(
+            request,
+            f"Sorry, someone else just claimed those {order.menu_item.name} {order.menu_item.portion_word()}s. Please try again.",
+        )
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
 
@@ -107,7 +113,8 @@ def unclaim_portion_view(request, order_id):
 
     try:
         count = unclaim_portions(event, order.id, form.cleaned_data['claimant_phone'])
-        messages.success(request, f"Cancelled {count} portion(s) of {order.menu_item.name}.")
+        word = order.menu_item.portion_word()
+        messages.success(request, f"Cancelled {count} {word}{pluralize(count)} of {order.menu_item.name}.")
     except EventNotOpenError:
         messages.error(request, f"'{event.name}' is no longer open, so claims can't be cancelled.")
     except ClaimNotFoundError:
@@ -118,6 +125,12 @@ def unclaim_portion_view(request, order_id):
         messages.error(
             request,
             f"That claim on the {order.menu_item.name} order may have already been cancelled - refresh and try again.",
+        )
+    except StarterClaimProtectedError:
+        messages.error(
+            request,
+            f"The {order.menu_item.portion_word()}s reserved when the {order.menu_item.name} order was "
+            "started can't be cancelled this way - ask an organiser to delete the order instead.",
         )
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event.public_id)
@@ -155,16 +168,18 @@ def start_order_view(request, event_id):
             form.cleaned_data['claimant_phone'],
             form.cleaned_data['revolut_username'],
         )
+        word = menu_item.portion_word()
         messages.success(
             request,
-            f"Started a new order for {menu_item.name} and claimed {len(claimed)} portion(s)!",
+            f"Started a new order for {menu_item.name} and claimed {len(claimed)} {word}{pluralize(len(claimed))}!",
         )
     except EventNotOpenError:
         messages.error(request, f"'{event.name}' is no longer open for new orders.")
     except NotEnoughPortionsError:
         messages.error(
             request,
-            f"You can't claim more than the {menu_item.portions_per_unit} portions {menu_item.name} will contain.",
+            f"You can't claim more than the {menu_item.portions_per_unit} {menu_item.portion_word()}s "
+            f"{menu_item.name} will contain.",
         )
 
     return redirect('events:event_detail', org_slug=event.organisation.slug, event_id=event_id)

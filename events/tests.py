@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from orders.models import Order, Portion
-from orders.services import claim_portions_by_quantity
+from orders.services import claim_portions_by_quantity, start_order_and_claim
 from organisations.models import Organisation, OrganisationMembership
 from vendors.models import MenuItem, Vendor
 
@@ -472,6 +472,30 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Edit event")
 
+    def test_org_and_vendor_links_hidden_for_anonymous_visitors(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Go to organisation")
+        self.assertNotContains(response, "Go to vendor")
+
+    def test_org_and_vendor_links_shown_to_members(self):
+        member = User.objects.create_user(username="member", password="pw")
+        OrganisationMembership.objects.create(
+            user=member, organisation=self.organisation, role="organiser"
+        )
+        self.client.force_login(member)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Go to organisation")
+        self.assertContains(
+            response, reverse("organisations:organisation_detail", args=[self.organisation.slug])
+        )
+        self.assertContains(response, "Go to vendor")
+        self.assertContains(
+            response, reverse("organisations:vendor_detail", args=[self.organisation.slug, self.vendor.id])
+        )
+
     def test_delete_order_button_hidden_for_anonymous_visitors(self):
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
@@ -602,6 +626,21 @@ class EventDetailViewTests(TestCase):
         self.assertContains(response, "Claim a portion (3 left)")
         self.assertContains(response, "Start a new order")
 
+    def test_custom_portion_label_replaces_portion_wording(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00", portion_label="slice",
+        )
+        order, _ = start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Claim a slice (3 left)")
+        self.assertContains(response, "€2.50/slice")
+        self.assertContains(response, "1 slice</option>")
+        self.assertContains(response, "2 slices</option>")
+        self.assertContains(response, 'data-portion-word="slice"')
+        self.assertNotContains(response, "Claim a portion")
+
     def test_start_section_dropdown_lists_only_active_menu_items(self):
         margherita = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
@@ -616,8 +655,8 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
-        self.assertContains(response, f'<option value="{margherita.id}" data-portions="4" data-price="2.50">Margherita (€2.50/portion, €10.00 total)</option>')
-        self.assertContains(response, f'<option value="{pepperoni.id}" data-portions="4" data-price="3.00">Pepperoni (€3.00/portion, €12.00 total)</option>')
+        self.assertContains(response, f'<option value="{margherita.id}" data-portions="4" data-portion-word="portion" data-price="2.50">Margherita (€2.50/portion, €10.00 total)</option>')
+        self.assertContains(response, f'<option value="{pepperoni.id}" data-portions="4" data-portion-word="portion" data-price="3.00">Pepperoni (€3.00/portion, €12.00 total)</option>')
         self.assertNotContains(response, "Discontinued Pizza")
 
     def test_inactive_menu_item_with_existing_order_still_joinable_no_start_button(self):
@@ -633,7 +672,20 @@ class EventDetailViewTests(TestCase):
         self.assertNotContains(response, "Start another order")
         self.assertNotContains(response, "Start an order")
 
-    def test_order_header_shows_earliest_claimant_as_starter(self):
+    def test_order_header_shows_starter_name(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Alice's order")
+
+    def test_order_header_falls_back_to_number_without_a_starter(self):
+        # No start_order_and_claim call here, so started_by_name is blank -
+        # e.g. an order created directly (not through the public start-order
+        # flow) with claims added separately.
         item = MenuItem.objects.create(
             vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
         )
@@ -642,7 +694,40 @@ class EventDetailViewTests(TestCase):
 
         response = self.client.get(self.url)
 
+        self.assertContains(response, "Order #")
+        self.assertNotContains(response, "Alice's order")
+
+    def test_order_header_name_unaffected_by_later_claimants(self):
+        # Regression test: order.started_by used to be re-derived on every
+        # request from whichever claim currently had the earliest
+        # claimed_at, so a new claimant joining after the starter's portions
+        # were freed up would silently take over the order's displayed
+        # name. started_by_name is now set once, at creation, and Bob
+        # joining afterward must not change it.
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order, _ = start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Bob", "0879999999")
+
+        response = self.client.get(self.url)
+
         self.assertContains(response, "Alice's order")
+        self.assertNotContains(response, "Bob's order")
+
+    def test_starters_claim_has_no_cancel_button_but_joiners_does(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order, _ = start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Bob", "0879999999")
+
+        response = self.client.get(self.url)
+        content = response.content.decode()
+
+        self.assertIn("aria-label=\"Can't be cancelled", content)
+        self.assertIn("data-tooltip=\"Can't be cancelled", content)
+        self.assertEqual(content.count('aria-label="Cancel claim"'), 1)
 
     def test_order_header_shows_price_per_portion(self):
         item = MenuItem.objects.create(
@@ -801,6 +886,96 @@ class EventDetailViewTests(TestCase):
 
         self.assertContains(response, "Incomplete, will not proceed")
 
+    def test_partially_claimed_order_shows_incomplete_when_closed(self):
+        # 'closed' already blocks new claims (unlike 'locked'), so a partial
+        # order is just as incomplete as a submitted one - just not final
+        # yet, hence the shorter label without "will not proceed".
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Incomplete")
+        self.assertNotContains(response, "will not proceed")
+
+    def test_orders_sorted_complete_first_when_closed(self):
+        partial_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Partial Pizza", portions_per_unit=4, price="10.00"
+        )
+        full_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Full Pizza", portions_per_unit=1, price="10.00"
+        )
+        # Partial order created first, so created_at ordering alone would
+        # put it first - the sort must override that once closed.
+        start_order_and_claim(self.event, partial_item, 1, "Alice", "0871234567")
+        start_order_and_claim(self.event, full_item, 1, "Bob", "0879999999")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+        content = response.content.decode()
+
+        self.assertLess(content.index("Bob's order"), content.index("Alice's order"))
+
+    def test_orders_not_resorted_while_open(self):
+        partial_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Partial Pizza", portions_per_unit=4, price="10.00"
+        )
+        full_item = MenuItem.objects.create(
+            vendor=self.vendor, name="Full Pizza", portions_per_unit=1, price="10.00"
+        )
+        start_order_and_claim(self.event, partial_item, 1, "Alice", "0871234567")
+        start_order_and_claim(self.event, full_item, 1, "Bob", "0879999999")
+        # self.event.status stays 'open' from setUp.
+
+        response = self.client.get(self.url)
+        content = response.content.decode()
+
+        self.assertLess(content.index("Alice's order"), content.index("Bob's order"))
+
+    def test_incomplete_order_greyed_out_when_closed(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'class="order-card order-card--stalled"')
+
+    def test_incomplete_order_not_greyed_out_while_open(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        # self.event.status stays 'open' from setUp.
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, 'class="order-card order-card--stalled"')
+
+    def test_full_order_not_greyed_out_when_closed(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        order = Order.objects.create(event=self.event, menu_item=item)
+        claim_portions_by_quantity(self.event, [(order.id, 1)], "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, 'class="order-card order-card--stalled"')
+
     def test_no_longer_open_message_absent_when_locked(self):
         self.event.status = "locked"
         self.event.save()
@@ -911,6 +1086,56 @@ class EventDetailViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertNotContains(response, "on Revolut")
+
+    def test_contact_note_shown_alongside_pay_button_when_fully_claimed_and_closed(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        start_order_and_claim(self.event, item, 1, "Alice", "0871234567", "alicepay")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Pay alicepay on Revolut")
+        self.assertContains(response, "No Revolut? Contact Alice at")
+
+    def test_contact_note_shown_without_revolut_button_when_no_revtag(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "on Revolut")
+        self.assertContains(response, "Contact Alice at")
+        self.assertNotContains(response, "No Revolut? Contact")
+
+    def test_contact_note_hidden_before_staging_phase(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=1, price="10.00"
+        )
+        start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+        # self.event.status stays 'open' from setUp.
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Contact Alice at")
+
+    def test_contact_note_hidden_for_partially_claimed_order_when_closed(self):
+        item = MenuItem.objects.create(
+            vendor=self.vendor, name="Margherita", portions_per_unit=4, price="10.00"
+        )
+        start_order_and_claim(self.event, item, 1, "Alice", "0871234567")
+        self.event.status = "closed"
+        self.event.save()
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "Contact Alice at")
 
     def test_orders_shown_in_creation_order_not_grouped_by_menu_item(self):
         # Names deliberately chosen so alphabetical-by-item-name order (the

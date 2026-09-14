@@ -19,6 +19,14 @@ class MenuItem(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name="menu_items")
     name = models.CharField(max_length=255)
     portions_per_unit = models.PositiveIntegerField(default=1)
+    # Purely cosmetic override for what a "portion" is called on the public
+    # event page (e.g. "slice" for a pizza) - doesn't affect
+    # portions_per_unit or Portion generation, just the word used in
+    # templates via portion_word() below.
+    portion_label = models.CharField(
+        max_length=30, blank=True,
+        help_text="E.g. rename 'portion' to 'slice' for a pizza. Leave blank to keep 'portion'.",
+    )
     price = models.DecimalField(max_digits=6, decimal_places=2)
     is_active = models.BooleanField(default=True)
 
@@ -27,3 +35,6 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.vendor})"
+
+    def portion_word(self):
+        return self.portion_label or "portion"

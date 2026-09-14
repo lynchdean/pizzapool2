@@ -258,6 +258,15 @@
       gap: var(--pico-spacing);
       border-left: 4px solid #dc143b;
     }
+    /* Once claiming has stopped (event closed/submitted), an incomplete
+       order can't change any further - dimming it draws the eye to the
+       complete ones instead, which is also why they're sorted to the top
+       (see events/views.py:event_detail). Opacity alone (rather than
+       overriding individual colours) dims everything inside consistently,
+       including the red accent border and status-tracker icons. */
+    .order-card--stalled {
+      opacity: 0.55;
+    }
 
     /* Bottom margin is 0: <header> is a direct flex child of .order-card,
        so its own margin-bottom would double up with .order-card's flex
@@ -309,6 +318,26 @@
     .claimant-list li:last-child {
       border-bottom: none;
     }
+    /* Sits in the same slot as the "Cancel claim" icon-button below (which
+       the starter's claim never gets - see StarterClaimProtectedError),
+       matching its padding so the row doesn't jump width between claimants. */
+    .claimant-starter-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.15rem 0.5rem;
+      color: var(--pico-muted-color);
+    }
+    /* Pico's tooltip text is nowrap and centred on the trigger by default,
+       which overflows the viewport for a sentence-length tooltip on an
+       icon sitting this close to the card's right edge. Wrapping it keeps
+       the box a fixed, readable width instead of spilling off-screen. */
+    .claimant-starter-icon[data-tooltip]::before {
+      white-space: normal;
+      width: max-content;
+      max-width: 220px;
+      text-align: center;
+    }
     /* Forced onto its own line unconditionally (not just wrapped when
        narrow) so the card header reads the same on mobile and desktop,
        rather than reflowing differently depending on available width. */
@@ -316,6 +345,11 @@
       display: block;
       font-size: 0.875rem;
       color: var(--pico-muted-color);
+    }
+    .order-contact-note {
+      font-size: 0.875rem;
+      color: var(--pico-muted-color);
+      margin-bottom: 0;
     }
 
     .pizza-icon,
@@ -681,7 +715,9 @@
 
         var chosen = menuSelect.options[menuSelect.selectedIndex];
         var max = chosen && parseInt(chosen.dataset.portions, 10);
+        var word = (chosen && chosen.dataset.portionWord) || 'portion';
         portionsSelect.dataset.price = (chosen && chosen.dataset.price) || '';
+        portionsSelect.setAttribute('aria-label', 'Number of ' + word + 's to reserve for yourself');
 
         portionsSelect.innerHTML = '';
         if (!max) {
@@ -700,8 +736,8 @@
           var option = document.createElement('option');
           option.value = n;
           option.textContent = n === max
-            ? 'Reserve all ' + n + ' portions'
-            : 'Reserve ' + n + ' portion' + (n === 1 ? '' : 's');
+            ? 'Reserve all ' + n + ' ' + word + 's'
+            : 'Reserve ' + n + ' ' + word + (n === 1 ? '' : 's');
           portionsSelect.appendChild(option);
         }
         portionsSelect.disabled = false;

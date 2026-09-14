@@ -32,7 +32,10 @@ class VendorForm(forms.ModelForm):
 class MenuItemForm(forms.ModelForm):
     class Meta:
         model = MenuItem
-        fields = ['name', 'portions_per_unit', 'price', 'is_active']
+        fields = ['name', 'portions_per_unit', 'portion_label', 'price', 'is_active']
+        widgets = {
+            'portion_label': forms.TextInput(attrs={'placeholder': 'portion'}),
+        }
 
     def __init__(self, *args, vendor=None, **kwargs):
         super().__init__(*args, **kwargs)
