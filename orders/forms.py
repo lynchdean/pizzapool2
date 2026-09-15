@@ -34,6 +34,12 @@ class StartOrderForm(_ClaimFieldsMixin):
         )],
     )
 
+    def clean_revolut_username(self):
+        # revolut.me/<username> links break unless the username is
+        # lowercase - normalize here rather than trusting how the visitor
+        # happened to type it.
+        return self.cleaned_data['revolut_username'].lower()
+
 
 class UnclaimForm(forms.Form):
     # Plain CharField, not PhoneNumberField: this value is always

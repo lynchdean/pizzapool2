@@ -118,6 +118,15 @@ class CreateOrderTests(TestCase):
             Portion.objects.filter(order=order).count(), self.menu_item.portions_per_unit
         )
 
+    def test_save_lowercases_revolut_username_regardless_of_entry_point(self):
+        # Backstop for anything that sets this field directly (admin, shell)
+        # rather than going through StartOrderForm's own cleaning.
+        order = Order.objects.create(
+            event=self.event, menu_item=self.menu_item, revolut_username="AliCe92",
+        )
+
+        self.assertEqual(order.revolut_username, "alice92")
+
     def test_create_order_raises_event_not_open_error_for_locked_closed_submitted(self):
         for status in ("locked", "closed", "submitted"):
             with self.subTest(status=status):
@@ -494,6 +503,15 @@ class StartOrderViewTests(TestCase):
         order = Order.objects.get(event=self.event, menu_item=self.menu_item)
         self.assertEqual(Portion.objects.filter(order=order, claimant_name="Alice").count(), 2)
         self.assertContains(response, "Started a new order for Margherita")
+
+    def test_revolut_username_is_lowercased(self):
+        # revolut.me/<username> links break unless lowercase.
+        data = {**self.valid_data, "revolut_username": "AliCe92"}
+
+        self.client.post(self.url, data, follow=True)
+
+        order = Order.objects.get(event=self.event, menu_item=self.menu_item)
+        self.assertEqual(order.revolut_username, "alice92")
 
     def test_post_sets_started_by_name_and_marks_starter_portions(self):
         self.client.post(self.url, self.valid_data, follow=True)

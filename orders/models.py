@@ -43,6 +43,12 @@ class Order(models.Model):
                 raise ValidationError("Cannot create an order for an event that is not open.")
 
     def save(self, *args, **kwargs):
+        # Backstop alongside StartOrderForm.clean_revolut_username - normalize
+        # here too so nothing that sets this field directly (admin, shell,
+        # future code) can save a mixed-case value and break its revolut.me
+        # link.
+        if self.revolut_username:
+            self.revolut_username = self.revolut_username.lower()
         if not self.public_id:
             public_id = generate_public_id()
             while Order.objects.filter(public_id=public_id).exists():
